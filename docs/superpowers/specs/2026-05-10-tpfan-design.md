@@ -88,12 +88,13 @@ Service: `org.tpfan1`, Pfad `/org/tpfan1`.
 - `Mode: s` — `"auto" | "curve" | "manual" | "profile:quiet" | "profile:balanced" | "profile:performance"`
 - `CurrentLevel: s` — `"0".."7" | "auto" | "disengaged"`
 - `Curve: a(dy)` — `[(temp_c, level), ...]`
+- `CurveSensors: as` — Liste der Sensor-Namen, deren Maximum die Kurve speist (z. B. `["CPU", "GPU", "NVMe"]`)
 - `FailsafeTemp: d`
 - `DaemonVersion: s`
 
 ### Methoden (PolicyKit-geschützt)
 - `SetMode(s mode)`
-- `SetCurve(a(dy) points)` — validiert: ≥2 Punkte, Temps 20–110 °C monoton steigend, Level 0–7
+- `SetCurve(a(dy) points, as sensors)` — validiert: ≥2 Punkte, Temps 20–110 °C monoton steigend, Level 0–7, Sensoren existieren
 - `SetManualLevel(s level)` — nur in `mode=manual`
 - `SetFailsafeTemp(d temp)`
 - `ReloadConfig()`
