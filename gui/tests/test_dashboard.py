@@ -1,0 +1,21 @@
+from __future__ import annotations
+import pytest
+
+pytest.importorskip("pytestqt")
+
+
+def test_dashboard_updates_with_tick(qtbot):
+    from tpfan_gui.ipc.dbus_client import TickPayload
+    from tpfan_gui.views.dashboard import Dashboard
+    d = Dashboard()
+    qtbot.addWidget(d)
+    payload = TickPayload(
+        temps={"CPU": 45.5, "GPU": 50.0},
+        fans=[(2200, "auto"), (2100, "auto")],
+        level="auto",
+    )
+    d.apply_tick(payload)
+    assert "45.5" in d.cpu_label.text()
+    assert "50.0" in d.gpu_label.text()
+    assert "2200" in d.fan1_label.text()
+    assert "auto" in d.level_label.text().lower()
