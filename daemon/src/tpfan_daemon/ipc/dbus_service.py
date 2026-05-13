@@ -7,6 +7,31 @@ BUS_NAME = "org.tpfan1"
 OBJECT_PATH = "/org/tpfan1"
 IFACE = "org.tpfan1"
 
+# Byte-Sentinels für nicht-numerische Fan-Level über D-Bus.
+LEVEL_AUTO = 0xFF
+LEVEL_DISENGAGED = 0xFE
+
+
+def level_str_to_byte(s: str) -> int:
+    """Mappt textuelle Fan-Level auf Byte-Codes für D-Bus.
+
+    'auto' -> 0xFF, 'disengaged' -> 0xFE, numerisch -> int(s), sonst 0xFF.
+    """
+    try:
+        s = str(s)
+    except Exception:
+        return LEVEL_AUTO
+    if s == "auto":
+        return LEVEL_AUTO
+    if s == "disengaged":
+        return LEVEL_DISENGAGED
+    if s.isdigit():
+        try:
+            return int(s)
+        except ValueError:
+            return LEVEL_AUTO
+    return LEVEL_AUTO
+
 
 @dbus_interface(IFACE)
 class TpfanService:
@@ -40,11 +65,7 @@ class TpfanService:
         fans = self._state().get("fans", [])
         out: list[tuple[int, int]] = []
         for rpm, lvl in fans:
-            try:
-                lvl_n = int(lvl) if str(lvl).isdigit() else 0xFF
-            except (ValueError, TypeError):
-                lvl_n = 0xFF
-            out.append((int(rpm), lvl_n))
+            out.append((int(rpm), level_str_to_byte(lvl)))
         return out
 
     @property

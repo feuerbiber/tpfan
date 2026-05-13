@@ -41,6 +41,15 @@ def session_bus(tmp_path: Path):
             proc.wait(timeout=5)
 
 
+def test_fans_property_distinguishes_auto_disengaged_numeric():
+    import os, sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+    from tpfan_daemon.ipc.dbus_service import TpfanService
+    state = {"fans": [(2000, "disengaged"), (2100, "auto"), (2200, "5")]}
+    svc = TpfanService(state_getter=lambda: state, command_handler=lambda *a, **k: None)
+    assert svc.Fans == [(2000, 0xFE), (2100, 0xFF), (2200, 5)]
+
+
 def test_curve_getter_handles_missing_state():
     import os, sys
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))

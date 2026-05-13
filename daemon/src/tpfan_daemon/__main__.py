@@ -8,7 +8,7 @@ from dasbus.connection import SystemMessageBus
 from .daemon import Daemon
 from .hw.sensors import Sensors
 from .hw.fan import Fan
-from .ipc.dbus_service import TpfanService, BUS_NAME, OBJECT_PATH
+from .ipc.dbus_service import TpfanService, BUS_NAME, OBJECT_PATH, level_str_to_byte
 from .ipc.polkit import authorize
 
 CONFIG_PATH = Path(os.environ.get("TPFAN_CONFIG", "/etc/tpfan/config.toml"))
@@ -108,7 +108,7 @@ def _state_dict(d: Daemon, sensors: Sensors) -> dict:
 
 
 def _lvl_to_int(lvl: str) -> int:
-    return int(lvl) if lvl.isdigit() else 0xFF
+    return level_str_to_byte(lvl)
 
 
 if __name__ == "__main__":
