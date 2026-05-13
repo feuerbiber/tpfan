@@ -37,6 +37,9 @@ class ControlLoop:
     _last_curve_level: int = 0
 
     def set_config(self, cfg: Config) -> None:
+        old = self.config
+        if old.mode != cfg.mode or old.curve != cfg.curve:
+            self._last_curve_level = 0
         self.config = cfg
 
     def _active_curve(self) -> CurveCfg | None:
@@ -48,9 +51,28 @@ class ControlLoop:
             return self.config.profiles.get(name)
         return None
 
+    def _try_set_auto(self) -> None:
+        try:
+            self.fan.set_level("auto")
+            self._last_level = "auto"
+        except OSError:
+            pass
+
     def tick(self) -> TickResult:
-        temps = self.sensors.read_all()
-        st = self.fan.read()
+        try:
+            temps = self.sensors.read_all()
+        except OSError as e:
+            log.error("sensor read failed: %s — falling back to auto", e)
+            self._try_set_auto()
+            return TickResult({}, 0, "auto", "auto", fallback_to_auto=True)
+
+        try:
+            st = self.fan.read()
+        except OSError as e:
+            log.error("fan read failed: %s — falling back to auto", e)
+            self._try_set_auto()
+            return TickResult(temps, 0, "auto", "auto", fallback_to_auto=True)
+
         current = st.level
 
         target: str
@@ -64,10 +86,18 @@ class ControlLoop:
                 emergency = (hot[1], hot[0])
                 try:
                     self.fan.set_level(target)
+                    self._last_level = target
                 except OSError as e:
-                    log.error("emergency fan write failed: %s", e)
-                self._last_level = target
-                return TickResult(temps, st.speed_rpm, current, target, emergency)
+                    log.error("emergency fan write failed: %s — falling back to auto", e)
+                    fallback = True
+                    try:
+                        self.fan.set_level("auto")
+                        self._last_level = "auto"
+                        target = "auto"
+                    except OSError:
+                        pass
+                return TickResult(temps, st.speed_rpm, current, target,
+                                  emergency=emergency, fallback_to_auto=fallback)
         else:
             target = "auto"
             try:

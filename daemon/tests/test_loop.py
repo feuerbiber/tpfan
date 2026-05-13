@@ -5,8 +5,13 @@ from tpfan_daemon.config import Config, CurveCfg, DEFAULT
 
 
 class FakeSensors:
-    def __init__(self, temps): self.temps = temps
-    def read_all(self): return dict(self.temps)
+    def __init__(self, temps):
+        self.temps = temps
+        self.fail_read: bool = False
+    def read_all(self):
+        if self.fail_read:
+            raise OSError("sensors unavailable")
+        return dict(self.temps)
 
 
 class FakeFan:
@@ -14,8 +19,12 @@ class FakeFan:
         self.level = "auto"
         self.history: list[str] = []
         self.fail_set: bool = False
+        self.fail_read: bool = False
+        self.fail_only_non_auto: bool = False
 
     def read(self):
+        if self.fail_read:
+            raise OSError("fan read failed")
         @dataclass
         class S:
             speed_rpm: int = 2000
@@ -26,7 +35,7 @@ class FakeFan:
         return s
 
     def set_level(self, lvl):
-        if self.fail_set:
+        if self.fail_set and not (self.fail_only_non_auto and lvl == "auto"):
             raise OSError("nope")
         self.level = lvl
         self.history.append(lvl)
@@ -90,3 +99,52 @@ def test_profile_mode_uses_profile_curve():
     loop, fan = _loop({"CPU": 85.0}, cfg=cfg)
     loop.tick()
     assert fan.level == "7"
+
+
+def test_failsafe_write_failure_falls_back_to_auto():
+    cfg = Config(mode="curve", failsafe_temp=70.0,
+                 curve=CurveCfg(("CPU",), ((40.0, 0), (80.0, 7))))
+    fan = FakeFan()
+    fan.fail_set = True
+    fan.fail_only_non_auto = True
+    loop, _ = _loop({"CPU": 95.0}, cfg=cfg, fan=fan)
+    tr = loop.tick()
+    assert tr.emergency is not None
+    assert tr.fallback_to_auto is True
+
+
+def test_set_config_resets_curve_state_on_mode_change():
+    curve = CurveCfg(("CPU",), ((40.0, 0), (80.0, 7)))
+    cfg_curve = Config(mode="curve", curve=curve)
+    loop, fan = _loop({"CPU": 80.0}, cfg=cfg_curve)
+    loop.tick()
+    assert loop._last_curve_level == 7
+    loop.set_config(Config(mode="manual", manual_level="3"))
+    assert loop._last_curve_level == 0
+    loop.set_config(cfg_curve)
+    assert loop._last_curve_level == 0
+    loop.sensors.temps = {"CPU": 42.0}
+    loop.tick()
+    assert loop._last_curve_level < 7
+
+
+def test_sensors_read_failure_falls_back_to_auto():
+    cfg = Config(mode="manual", manual_level="5")
+    fan = FakeFan()
+    sensors = FakeSensors({"CPU": 50.0})
+    sensors.fail_read = True
+    loop = ControlLoop(sensors=sensors, fan=fan, config=cfg)
+    tr = loop.tick()
+    assert tr.fallback_to_auto is True
+    assert tr.temps == {}
+    assert tr.target_level == "auto"
+
+
+def test_fan_read_failure_falls_back_to_auto():
+    cfg = Config(mode="manual", manual_level="5")
+    fan = FakeFan()
+    fan.fail_read = True
+    loop, _ = _loop({"CPU": 50.0}, cfg=cfg, fan=fan)
+    tr = loop.tick()
+    assert tr.fallback_to_auto is True
+    assert tr.target_level == "auto"
