@@ -36,6 +36,10 @@ class ControlLoop:
     _last_level: str = "auto"
     _last_curve_level: int = 0
 
+    @property
+    def last_level(self) -> str:
+        return self._last_level
+
     def set_config(self, cfg: Config) -> None:
         old = self.config
         if old.mode != cfg.mode or old.curve != cfg.curve:

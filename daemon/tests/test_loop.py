@@ -140,6 +140,13 @@ def test_sensors_read_failure_falls_back_to_auto():
     assert tr.target_level == "auto"
 
 
+def test_last_level_property():
+    cfg = Config(mode="manual", manual_level="5")
+    loop, _ = _loop({"CPU": 50.0}, cfg=cfg)
+    loop.tick()
+    assert loop.last_level == "5"
+
+
 def test_fan_read_failure_falls_back_to_auto():
     cfg = Config(mode="manual", manual_level="5")
     fan = FakeFan()

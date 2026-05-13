@@ -34,6 +34,8 @@ class Daemon:
             self._save()
         elif cmd == "set_curve":
             points, sensors_ = args
+            if not sensors_:
+                raise ValueError("set_curve requires at least one sensor")
             pts = _validate_points([list(p) for p in points])
             known = set(self.sensors.read_all().keys())
             for s in sensors_:

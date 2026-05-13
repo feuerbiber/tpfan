@@ -45,6 +45,13 @@ def test_set_curve_rejects_unknown_sensor(tmp_path: Path):
         d.handle("set_curve", [(40.0, 0), (80.0, 7)], ["DOES_NOT_EXIST"])
 
 
+def test_set_curve_rejects_empty_sensors(tmp_path: Path):
+    cfg_path = tmp_path / "config.toml"
+    d = Daemon(config_path=cfg_path, sensors=StubSensors(), fan=StubFan())
+    with pytest.raises(ValueError):
+        d.handle("set_curve", [(40.0, 0), (80.0, 7)], [])
+
+
 def test_set_manual_level_only_in_manual(tmp_path: Path):
     cfg_path = tmp_path / "config.toml"
     d = Daemon(config_path=cfg_path, sensors=StubSensors(), fan=StubFan())

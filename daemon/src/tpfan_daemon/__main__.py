@@ -56,7 +56,6 @@ def main() -> int:
         state_getter=lambda: _state_dict(daemon, sensors),
         command_handler=daemon.handle,
         authorizer=authorizer,
-        sender_getter=lambda: "",
     )
 
     bus.publish_object(OBJECT_PATH, service)
@@ -67,8 +66,10 @@ def main() -> int:
 
     def shutdown(*_):
         log.info("shutdown — resetting fan to auto")
-        try: fan.set_level("auto")
-        except Exception: pass
+        try:
+            fan.set_level("auto")
+        except Exception:
+            log.exception("failed to reset fan to auto on shutdown")
         main_loop.quit()
 
     for s in (signal.SIGTERM, signal.SIGINT):
@@ -82,9 +83,10 @@ def main() -> int:
             service.Tick(tr.temps, fans_payload, tr.target_level)
             if tr.emergency:
                 service.EmergencyTriggered(tr.emergency[0], tr.emergency[1])
-            _sd_notify("WATCHDOG=1")
         except Exception:
             log.exception("tick failed")
+        finally:
+            _sd_notify("WATCHDOG=1")
         return True
 
     GLib.timeout_add_seconds(1, tick)
@@ -95,7 +97,7 @@ def main() -> int:
 def _state_dict(d: Daemon, sensors: Sensors) -> dict:
     return {
         "mode": d.loop.config.mode,
-        "level": d.loop._last_level,
+        "level": d.loop.last_level,
         "temps": sensors.read_all(),
         "sensor_describe": sensors.describe(),
         "fans": [],
