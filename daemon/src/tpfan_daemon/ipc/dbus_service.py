@@ -60,7 +60,8 @@ class TpfanService:
 
     @property
     def Curve(self) -> List[Tuple[Double, Byte]]:
-        return [(float(t), int(l)) for t, l in self._state().get("curve").points]
+        cv = self._state().get("curve")
+        return [(float(t), int(l)) for t, l in cv.points] if cv else []
 
     @property
     def CurveSensors(self) -> List[Str]:

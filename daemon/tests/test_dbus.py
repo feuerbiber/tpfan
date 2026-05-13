@@ -17,17 +17,36 @@ def session_bus(tmp_path: Path):
 </busconfig>
 """)
     addr_file = tmp_path / "addr"
+    f = open(addr_file, "wb")
     proc = subprocess.Popen([
         "dbus-daemon", f"--config-file={conf}",
         "--print-address=1", "--nofork",
-    ], stdout=open(addr_file, "wb"))
-    time.sleep(0.4)
-    addr = addr_file.read_text().strip()
-    if not addr:
-        proc.kill(); pytest.skip("could not read session bus address")
-    os.environ["DBUS_SESSION_BUS_ADDRESS"] = addr
-    yield addr
-    proc.send_signal(signal.SIGTERM); proc.wait(timeout=5)
+    ], stdout=f)
+    try:
+        time.sleep(0.4)
+        f.close()
+        addr = addr_file.read_text().strip()
+        if not addr:
+            pytest.skip("could not read session bus address")
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = addr
+        yield addr
+    finally:
+        if not f.closed:
+            f.close()
+        proc.send_signal(signal.SIGTERM)
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
+
+
+def test_curve_getter_handles_missing_state():
+    import os, sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+    from tpfan_daemon.ipc.dbus_service import TpfanService
+    svc = TpfanService(state_getter=lambda: {}, command_handler=lambda *a, **k: None)
+    assert svc.Curve == []
 
 
 def test_service_exposes_properties_and_methods(session_bus):

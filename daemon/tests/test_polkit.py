@@ -28,3 +28,13 @@ def test_authorize_denied_raises():
     bus = FakeBus(False)
     with pytest.raises(PolkitError):
         authorize(bus, sender=":1.42", action="org.tpfan1.set-mode")
+
+
+class UnreachableBus:
+    def get_proxy(self, *a, **kw):
+        raise RuntimeError("bus connection lost")
+
+
+def test_authorize_authority_unreachable_fails_closed():
+    with pytest.raises(PolkitError):
+        authorize(UnreachableBus(), sender=":1.42", action="org.tpfan1.set-mode")
