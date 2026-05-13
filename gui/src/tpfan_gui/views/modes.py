@@ -25,11 +25,14 @@ class ModesPanel(QWidget):
 
         gb_man = QGroupBox("Manuelles Level")
         manl = QHBoxLayout(gb_man)
+        self._manual_buttons: list[QPushButton] = []
         for lvl in ["0", "1", "2", "3", "4", "5", "6", "7", "disengaged"]:
             b = QPushButton(lvl)
             b.clicked.connect(lambda _=False, v=lvl: self.manualLevelRequested.emit(v))
             manl.addWidget(b)
+            self._manual_buttons.append(b)
         root.addWidget(gb_man)
+        self.set_mode_state("auto")
 
         gb_prof = QGroupBox("Profil")
         pl = QHBoxLayout(gb_prof)
@@ -46,10 +49,20 @@ class ModesPanel(QWidget):
         self.failsafe_spin.setRange(40.0, 110.0)
         self.failsafe_spin.setDecimals(1)
         self.failsafe_spin.setValue(95.0)
-        self.failsafe_spin.editingFinished.connect(
-            lambda: self.failsafeRequested.emit(self.failsafe_spin.value()))
+        self._last_failsafe = 95.0
+        self.failsafe_spin.editingFinished.connect(self._on_failsafe_finished)
         fl.addWidget(QLabel("Schwelle:")); fl.addWidget(self.failsafe_spin)
         root.addWidget(gb_fs)
+
+    def _on_failsafe_finished(self) -> None:
+        v = self.failsafe_spin.value()
+        if v != self._last_failsafe:
+            self._last_failsafe = v
+            self.failsafeRequested.emit(v)
+
+    def set_mode_state(self, mode: str) -> None:
+        for b in self._manual_buttons:
+            b.setEnabled(mode == "manual")
 
     def _on_apply_profile(self):
         name = self.profile_combo.currentText()

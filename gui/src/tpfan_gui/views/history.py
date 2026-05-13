@@ -27,6 +27,12 @@ class HistoryBuffer:
         series = {name: [v for _, v in pts] for name, pts in self._values.items()}
         return xs, series
 
+    def snapshot_per_series(self) -> dict[str, tuple[list[float], list[float]]]:
+        return {
+            name: ([t for t, _ in pts], [v for _, v in pts])
+            for name, pts in self._values.items()
+        }
+
 
 def make_widget(parent=None):
     import pyqtgraph as pg
@@ -46,12 +52,12 @@ def make_widget(parent=None):
 
         def append(self, t: float, temps: dict[str, float]) -> None:
             self.buf.append(t, temps)
-            xs, series = self.buf.snapshot()
-            t0 = xs[0] if xs else 0.0
-            xs_rel = [x - t0 for x in xs]
-            for name, ys in series.items():
+            per = self.buf.snapshot_per_series()
+            all_t = [ts[0] for ts, _ in per.values() if ts]
+            t0 = min(all_t) if all_t else 0.0
+            for name, (xs, ys) in per.items():
                 if name not in self._curves:
                     self._curves[name] = self.plot.plot(name=name)
-                self._curves[name].setData(xs_rel[-len(ys):], ys)
+                self._curves[name].setData([x - t0 for x in xs], ys)
 
     return HistoryWidget(parent)

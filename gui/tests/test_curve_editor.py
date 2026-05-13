@@ -33,3 +33,25 @@ def test_move_clamps_level_to_0_7():
     assert new[1] == 7
     new = m.move(1, 60.0, -2)
     assert new[1] == 0
+
+
+def test_move_rejects_out_of_range_index():
+    m = CurveModel(points=[(40.0, 0), (80.0, 7)])
+    with pytest.raises(IndexError):
+        m.move(5, 60.0, 4)
+    with pytest.raises(IndexError):
+        m.move(-1, 60.0, 4)
+
+
+def test_add_rejects_duplicate_t():
+    m = CurveModel(points=[(40.0, 0), (80.0, 7)])
+    m.add(60.0, 4)
+    with pytest.raises(ValueError):
+        m.add(60.0, 5)
+
+
+def test_add_rejects_too_close():
+    m = CurveModel(points=[(40.0, 0), (80.0, 7)])
+    m.add(60.0, 4)
+    with pytest.raises(ValueError):
+        m.add(60.3, 5)

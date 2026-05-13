@@ -18,3 +18,13 @@ def test_handles_missing_sensor_per_tick():
     _, series = h.snapshot()
     assert series["CPU"] == [40.0, 41.0]
     assert series["GPU"] == [50.0]
+
+
+def test_snapshot_per_series_handles_gaps():
+    h = HistoryBuffer(window_seconds=60)
+    h.append(0.0, {"CPU": 40.0, "GPU": 50.0})
+    h.append(1.0, {"CPU": 41.0})
+    h.append(2.0, {"CPU": 42.0, "GPU": 52.0})
+    per = h.snapshot_per_series()
+    assert per["CPU"] == ([0.0, 1.0, 2.0], [40.0, 41.0, 42.0])
+    assert per["GPU"] == ([0.0, 2.0], [50.0, 52.0])

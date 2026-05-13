@@ -11,8 +11,16 @@ class CurveModel:
     t_max: float = 110.0
 
     def add(self, t: float, level: int) -> None:
-        self.points.append((float(t), max(0, min(7, int(level)))))
+        t = float(t)
+        lvl = max(0, min(7, int(level)))
+        self.points.append((t, lvl))
         self.points.sort(key=lambda p: p[0])
+        idx = next(i for i, p in enumerate(self.points) if p[0] == t and p[1] == lvl)
+        left = self.points[idx - 1][0] if idx > 0 else self.t_min - EPS
+        right = self.points[idx + 1][0] if idx < len(self.points) - 1 else self.t_max + EPS
+        if t - left < EPS or right - t < EPS:
+            del self.points[idx]
+            raise ValueError("point too close to neighbour")
 
     def remove(self, index: int) -> None:
         if len(self.points) <= 2:
@@ -20,6 +28,8 @@ class CurveModel:
         del self.points[index]
 
     def move(self, index: int, t: float, level: float) -> tuple[float, int]:
+        if not (0 <= index < len(self.points)):
+            raise IndexError(f"index {index} out of range")
         t = max(self.t_min, min(self.t_max, float(t)))
         lvl = max(0, min(7, int(round(level))))
         left = self.points[index - 1][0] + EPS if index > 0 else self.t_min
