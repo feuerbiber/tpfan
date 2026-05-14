@@ -56,6 +56,8 @@ PRESETS: list[tuple[str, list[tuple[float, int]]]] = [
 
 _PRESET_MATCH_EPS = 0.05
 
+_BUILTIN_NAMES = frozenset(name for name, _ in PRESETS)
+
 
 def match_preset_name(points) -> str | None:
     """Liefert den Preset-Namen, falls die Punkte exakt einem PRESET entsprechen.
@@ -89,10 +91,12 @@ def format_mode_label(mode: str, curve_points=None) -> str:
     return str(mode)
 
 
-def make_widget(model: CurveModel, on_change, parent=None):
+def make_widget(model: CurveModel, on_change, parent=None,
+                on_save_preset=None, on_delete_preset=None):
     """on_change(points) wird gerufen, wenn der User Apply klickt."""
     import pyqtgraph as pg
-    from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
+    from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+                                 QInputDialog, QMessageBox)
     from PyQt6.QtCore import Qt, QPointF, QObject, QEvent
 
     LEGEND_TEXT = (
@@ -162,10 +166,20 @@ def make_widget(model: CurveModel, on_change, parent=None):
                 self.preset_buttons.append(b)
             lay.addLayout(preset_row)
 
+            self.user_preset_row = QHBoxLayout()
+            self.user_preset_row.addWidget(QLabel("Eigene:"))
+            self.user_preset_buttons: list[QPushButton] = []
+            self.user_preset_delete_buttons: list[QPushButton] = []
+            self._user_presets: dict[str, tuple[list[tuple[float, int]], list[str]]] = {}
+            lay.addLayout(self.user_preset_row)
+
             row = QHBoxLayout()
             self.apply_btn = QPushButton("Anwenden")
             self.apply_btn.clicked.connect(self.commit)
             row.addWidget(self.apply_btn)
+            self.save_as_btn = QPushButton("Speichern als …")
+            self.save_as_btn.clicked.connect(self._on_save_as)
+            row.addWidget(self.save_as_btn)
             lay.addLayout(row)
 
             self._dragging = False
@@ -244,5 +258,44 @@ def make_widget(model: CurveModel, on_change, parent=None):
 
         def commit(self):
             on_change(list(model.points))
+
+        def set_user_presets(self, presets: dict) -> None:
+            for b in self.user_preset_buttons + self.user_preset_delete_buttons:
+                self.user_preset_row.removeWidget(b)
+                b.deleteLater()
+            self.user_preset_buttons = []
+            self.user_preset_delete_buttons = []
+            self._user_presets = dict(presets)
+            for name, (pts, _sensors) in presets.items():
+                b = QPushButton(name)
+                b.setToolTip(f"Eigenes Preset '{name}' laden")
+                b.clicked.connect(lambda _=False, p=list(pts): self.apply_preset(p))
+                self.user_preset_row.addWidget(b)
+                self.user_preset_buttons.append(b)
+                d = QPushButton("×")
+                d.setToolTip(f"Preset '{name}' löschen")
+                d.setMaximumWidth(24)
+                d.clicked.connect(lambda _=False, n=name: self._on_delete(n))
+                self.user_preset_row.addWidget(d)
+                self.user_preset_delete_buttons.append(d)
+
+        def _on_save_as(self) -> None:
+            name, ok = QInputDialog.getText(self, "Preset speichern", "Name:")
+            if not ok or not name:
+                return
+            if name in _BUILTIN_NAMES:
+                QMessageBox.warning(self, "tpfan",
+                    f"'{name}' ist ein vordefiniertes Preset und kann nicht überschrieben werden.")
+                return
+            if on_save_preset is not None:
+                on_save_preset(name, list(model.points))
+
+        def _on_delete(self, name: str) -> None:
+            answer = QMessageBox.question(self, "Preset löschen",
+                f"Preset '{name}' wirklich löschen?")
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+            if on_delete_preset is not None:
+                on_delete_preset(name)
 
     return CurveEditor(parent)

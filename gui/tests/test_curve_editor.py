@@ -123,3 +123,87 @@ def test_apply_button_triggers_on_change(qtbot):
     qtbot.addWidget(w)
     w.apply_btn.click()
     assert received == [[(40.0, 0), (60.0, 4), (80.0, 7)]]
+
+
+def test_set_user_presets_creates_buttons(qtbot):
+    from tpfan_gui.views.curve_editor import CurveModel, make_widget, PRESETS
+    model = CurveModel(points=[(40.0, 0), (80.0, 7)])
+    w = make_widget(model, on_change=lambda pts: None)
+    qtbot.addWidget(w)
+    w.set_user_presets({
+        "Meins": ([(42.0, 0), (80.0, 7)], ["CPU"]),
+    })
+    names = [b.text() for b in w.user_preset_buttons]
+    assert names == ["Meins"]
+    assert [b.text() for b in w.preset_buttons] == [n for n, _ in PRESETS]
+
+
+def test_user_preset_button_loads_points(qtbot):
+    from tpfan_gui.views.curve_editor import CurveModel, make_widget
+    model = CurveModel(points=[(40.0, 0), (80.0, 7)])
+    w = make_widget(model, on_change=lambda pts: None)
+    qtbot.addWidget(w)
+    w.set_user_presets({"Meins": ([(42.0, 0), (60.0, 3), (80.0, 7)], ["CPU"])})
+    w.user_preset_buttons[0].click()
+    assert model.points == [(42.0, 0), (60.0, 3), (80.0, 7)]
+
+
+def test_save_as_button_invokes_callback(qtbot, monkeypatch):
+    from tpfan_gui.views.curve_editor import CurveModel, make_widget
+    from PyQt6 import QtWidgets
+    monkeypatch.setattr(QtWidgets.QInputDialog, "getText",
+                        staticmethod(lambda *a, **k: ("Mein Name", True)))
+    saved = []
+    model = CurveModel(points=[(45.0, 0), (80.0, 7)])
+    w = make_widget(model, on_change=lambda pts: None,
+                    on_save_preset=lambda name, pts: saved.append((name, list(pts))))
+    qtbot.addWidget(w)
+    w.save_as_btn.click()
+    assert saved == [("Mein Name", [(45.0, 0), (80.0, 7)])]
+
+
+def test_save_as_cancelled_does_nothing(qtbot, monkeypatch):
+    from tpfan_gui.views.curve_editor import CurveModel, make_widget
+    from PyQt6 import QtWidgets
+    monkeypatch.setattr(QtWidgets.QInputDialog, "getText",
+                        staticmethod(lambda *a, **k: ("", False)))
+    saved = []
+    model = CurveModel(points=[(45.0, 0), (80.0, 7)])
+    w = make_widget(model, on_change=lambda pts: None,
+                    on_save_preset=lambda name, pts: saved.append(name))
+    qtbot.addWidget(w)
+    w.save_as_btn.click()
+    assert saved == []
+
+
+def test_save_as_rejects_builtin_collision(qtbot, monkeypatch):
+    from tpfan_gui.views.curve_editor import CurveModel, make_widget
+    from PyQt6 import QtWidgets
+    monkeypatch.setattr(QtWidgets.QInputDialog, "getText",
+                        staticmethod(lambda *a, **k: ("Sehr ruhig", True)))
+    warned = []
+    monkeypatch.setattr(QtWidgets.QMessageBox, "warning",
+                        staticmethod(lambda *a, **k: warned.append(a)))
+    saved = []
+    model = CurveModel(points=[(45.0, 0), (80.0, 7)])
+    w = make_widget(model, on_change=lambda pts: None,
+                    on_save_preset=lambda name, pts: saved.append(name))
+    qtbot.addWidget(w)
+    w.save_as_btn.click()
+    assert saved == []
+    assert warned
+
+
+def test_user_preset_delete_button_invokes_callback(qtbot, monkeypatch):
+    from tpfan_gui.views.curve_editor import CurveModel, make_widget
+    from PyQt6 import QtWidgets
+    monkeypatch.setattr(QtWidgets.QMessageBox, "question",
+                        staticmethod(lambda *a, **k: QtWidgets.QMessageBox.StandardButton.Yes))
+    deleted = []
+    model = CurveModel(points=[(40.0, 0), (80.0, 7)])
+    w = make_widget(model, on_change=lambda pts: None,
+                    on_delete_preset=lambda name: deleted.append(name))
+    qtbot.addWidget(w)
+    w.set_user_presets({"Meins": ([(42.0, 0), (80.0, 7)], ["CPU"])})
+    w.user_preset_delete_buttons[0].click()
+    assert deleted == ["Meins"]
