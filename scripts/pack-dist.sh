@@ -30,8 +30,8 @@ tar \
     --exclude='dist' \
     --exclude='scripts/pack-dist.sh' \
     -czf "$OUT" \
-    daemon/pyproject.toml daemon/src daemon/tests \
-    gui/pyproject.toml gui/src gui/tests \
+    daemon/pyproject.toml daemon/src \
+    gui/pyproject.toml gui/src \
     packaging scripts Makefile README.md
 
 echo "pack-dist: $OUT ($(stat -c %s "$OUT") Bytes)"
