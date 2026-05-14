@@ -6,6 +6,7 @@ from .views.dashboard import Dashboard
 from .views.history import make_widget as make_history
 from .views.curve_editor import CurveModel, make_widget as make_curve_editor
 from .views.modes import ModesPanel
+from .views.status import StatusView
 
 
 class MainWindow(QMainWindow):
@@ -19,12 +20,16 @@ class MainWindow(QMainWindow):
         self.history = make_history()
         self.curve_editor = make_curve_editor(self.curve_model, self._send_curve)
         self.modes = ModesPanel(profiles=["quiet", "balanced", "performance"])
+        self.status = StatusView(client)
 
         tabs = QTabWidget()
         tabs.addTab(self.dashboard, "Übersicht")
         tabs.addTab(self.history, "Verlauf")
         tabs.addTab(self.curve_editor, "Kurve")
         tabs.addTab(self.modes, "Modus")
+        tabs.addTab(self.status, "Status")
+        self.tabs = tabs
+        tabs.currentChanged.connect(self._on_tab_changed)
         self.setCentralWidget(tabs)
         self.setStatusBar(QStatusBar())
 
@@ -72,6 +77,10 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "tpfan", self._friendly_error(e))
 
+    def _on_tab_changed(self, index: int) -> None:
+        if self.tabs.widget(index) is self.status:
+            self.status.refresh()
+
     def _on_tick(self, payload: TickPayload):
         self.dashboard.apply_tick(payload)
         import time
@@ -79,6 +88,8 @@ class MainWindow(QMainWindow):
         if self._t0 is None:
             self._t0 = t
         self.history.append(t - self._t0, payload.temps)
+        if self.tabs.currentWidget() is self.status:
+            self.status.refresh()
 
     def _on_emergency(self, temp: float, sensor: str):
         QMessageBox.critical(self, "Failsafe ausgelöst",
