@@ -58,6 +58,62 @@ def test_curve_getter_handles_missing_state():
     assert svc.Curve == []
 
 
+def test_user_presets_property_exposes_state():
+    import os, sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+    from tpfan_daemon.ipc.dbus_service import TpfanService
+    from tpfan_daemon.config import CurveCfg
+    state = {
+        "user_presets": {
+            "A": CurveCfg(sensors=("CPU",), points=((40.0, 0), (80.0, 7))),
+        }
+    }
+    svc = TpfanService(state_getter=lambda: state, command_handler=lambda *a, **k: None)
+    result = svc.UserPresets
+    assert "A" in result
+    points, sensors = result["A"]
+    assert points == [(40.0, 0), (80.0, 7)]
+    assert sensors == ["CPU"]
+
+
+def test_save_user_preset_dispatches_command():
+    import os, sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+    from tpfan_daemon.ipc.dbus_service import TpfanService
+    calls = []
+    svc = TpfanService(state_getter=lambda: {},
+                       command_handler=lambda *a, **k: calls.append(a))
+    svc.SaveUserPreset("P", [(40.0, 0), (80.0, 7)], ["CPU"],
+                       call_info={"sender": ":1.42"})
+    assert calls == [("save_user_preset", "P", [(40.0, 0), (80.0, 7)], ["CPU"])]
+
+
+def test_delete_user_preset_dispatches_command():
+    import os, sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+    from tpfan_daemon.ipc.dbus_service import TpfanService
+    calls = []
+    svc = TpfanService(state_getter=lambda: {},
+                       command_handler=lambda *a, **k: calls.append(a))
+    svc.DeleteUserPreset("P", call_info={"sender": ":1.42"})
+    assert calls == [("delete_user_preset", "P")]
+
+
+def test_save_user_preset_checks_polkit():
+    import os, sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+    from tpfan_daemon.ipc.dbus_service import TpfanService
+    seen = []
+    svc = TpfanService(
+        state_getter=lambda: {},
+        command_handler=lambda *a, **k: None,
+        authorizer=lambda sender, action: seen.append((sender, action)),
+    )
+    svc.SaveUserPreset("P", [(40.0, 0), (80.0, 7)], ["CPU"],
+                       call_info={"sender": ":1.42"})
+    assert seen == [(":1.42", "org.tpfan1.manage-presets")]
+
+
 def test_authorizer_receives_nonempty_sender(session_bus):
     import sys, textwrap, json
     log_path = session_bus  # reuse tmp dir context via env var below

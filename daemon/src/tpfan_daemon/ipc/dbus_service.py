@@ -86,6 +86,16 @@ class TpfanService:
         return list(self._state().get("curve_sensors", []))
 
     @property
+    def UserPresets(self) -> Dict[Str, Tuple[List[Tuple[Double, Byte]], List[Str]]]:
+        out: dict[str, tuple[list[tuple[float, int]], list[str]]] = {}
+        for name, cv in self._state().get("user_presets", {}).items():
+            out[str(name)] = (
+                [(float(t), int(l)) for t, l in cv.points],
+                list(cv.sensors),
+            )
+        return out
+
+    @property
     def FailsafeTemp(self) -> Double:
         return float(self._state().get("failsafe_temp", 95.0))
 
@@ -125,6 +135,18 @@ class TpfanService:
     def SetFailsafeTemp(self, temp: Double, *, call_info) -> None:
         self._check("org.tpfan1.set-failsafe-temp", call_info.get("sender", ""))
         self._cmd("set_failsafe_temp", float(temp))
+
+    @accepts_additional_arguments
+    def SaveUserPreset(self, name: Str, points: List[Tuple[Double, Byte]],
+                       sensors: List[Str], *, call_info) -> None:
+        self._check("org.tpfan1.manage-presets", call_info.get("sender", ""))
+        self._cmd("save_user_preset", str(name),
+                  [(float(t), int(l)) for t, l in points], list(sensors))
+
+    @accepts_additional_arguments
+    def DeleteUserPreset(self, name: Str, *, call_info) -> None:
+        self._check("org.tpfan1.manage-presets", call_info.get("sender", ""))
+        self._cmd("delete_user_preset", str(name))
 
     @accepts_additional_arguments
     def ReloadConfig(self, *, call_info) -> None:

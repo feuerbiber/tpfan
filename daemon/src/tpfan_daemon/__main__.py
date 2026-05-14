@@ -123,6 +123,7 @@ def _state_dict(d: Daemon, sensors: Sensors, rpm_stats: RpmStatsTracker) -> dict
         "curve_sensors": list(d.loop.config.curve.sensors),
         "failsafe_temp": d.loop.config.failsafe_temp,
         "rpm_stats": rpm_stats.as_dict(),
+        "user_presets": d.loop.config.user_presets,
     }
 
 
