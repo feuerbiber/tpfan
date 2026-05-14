@@ -87,24 +87,51 @@ install_packaging() {
     systemctl daemon-reload
 }
 
+FAN_CONTROL_ACTIVE=0
+
+fan_control_is_active() {
+    local p=/sys/module/thinkpad_acpi/parameters/fan_control
+    [[ -r $p ]] && [[ "$(cat "$p")" == "Y" ]]
+}
+
 reload_kernel_module() {
     log "lade thinkpad_acpi mit fan_control=1 neu"
     if lsmod | grep -q '^thinkpad_acpi'; then
-        modprobe -r thinkpad_acpi || warn "konnte thinkpad_acpi nicht entladen (vermutlich in Benutzung) — Reboot empfohlen"
+        if ! modprobe -r thinkpad_acpi 2>/dev/null; then
+            warn "konnte thinkpad_acpi nicht entladen (in Benutzung) — Reboot nötig"
+            return 0
+        fi
     fi
     modprobe thinkpad_acpi || warn "modprobe thinkpad_acpi fehlgeschlagen"
-    if [[ ! -w /proc/acpi/ibm/fan ]]; then
-        warn "/proc/acpi/ibm/fan ist nicht schreibbar — fan_control=1 hat möglicherweise nicht gegriffen"
-        warn "Reboot durchführen oder Modul-Reload nach Beenden aller Lüfter-Tools wiederholen"
+
+    if fan_control_is_active; then
+        FAN_CONTROL_ACTIVE=1
+        log "  fan_control=1 ist aktiv"
+    else
+        warn "  fan_control=1 NICHT aktiv (vermutlich wurde das Modul auto-reloaded ohne neue Optionen)"
+        warn "  Reboot durchführen, dann greift /etc/modprobe.d/tpfan.conf"
     fi
 }
 
 enable_service() {
-    log "aktiviere und starte tpfan-daemon.service"
-    systemctl enable --now tpfan-daemon.service
+    if [[ $FAN_CONTROL_ACTIVE -eq 1 ]]; then
+        log "aktiviere und starte tpfan-daemon.service"
+        systemctl enable --now tpfan-daemon.service
+    else
+        log "aktiviere tpfan-daemon.service (Start verschoben bis nach Reboot)"
+        systemctl enable tpfan-daemon.service
+        warn ""
+        warn "WICHTIG: Reboot erforderlich, damit fan_control=1 wirksam wird."
+        warn "Nach dem Reboot startet der Service automatisch."
+        warn ""
+    fi
 }
 
 smoke_check() {
+    if [[ $FAN_CONTROL_ACTIVE -ne 1 ]]; then
+        log "Smoke-Check übersprungen (Reboot ausstehend)"
+        return 0
+    fi
     log "Smoke-Check"
     sleep 1
     if systemctl is-active --quiet tpfan-daemon.service; then
