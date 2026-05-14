@@ -1,5 +1,5 @@
 from __future__ import annotations
-from tpfan_gui.views.history import HistoryBuffer
+from tpfan_gui.views.history import HistoryBuffer, SENSOR_COLORS, color_for_sensor
 
 
 def test_appends_and_truncates_to_window():
@@ -18,6 +18,15 @@ def test_handles_missing_sensor_per_tick():
     _, series = h.snapshot()
     assert series["CPU"] == [40.0, 41.0]
     assert series["GPU"] == [50.0]
+
+
+def test_color_for_sensor_known_and_fallback():
+    assert color_for_sensor("CPU") == SENSOR_COLORS["CPU"]
+    assert color_for_sensor("GPU") == SENSOR_COLORS["GPU"]
+    c1 = color_for_sensor("Custom1", fallback_index=0)
+    c2 = color_for_sensor("Custom2", fallback_index=1)
+    assert c1 != c2
+    assert c1.startswith("#") and c2.startswith("#")
 
 
 def test_snapshot_per_series_handles_gaps():

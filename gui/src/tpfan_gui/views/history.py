@@ -34,8 +34,29 @@ class HistoryBuffer:
         }
 
 
+SENSOR_COLORS: dict[str, str] = {
+    "CPU":    "#e6194b",
+    "GPU":    "#3cb44b",
+    "NVMe":   "#4363d8",
+    "RAM":    "#f58231",
+    "WLAN":   "#911eb4",
+    "MB-CPU": "#46f0f0",
+    "MB-GPU": "#f032e6",
+    "ACPI":   "#bcf60c",
+}
+FALLBACK_PALETTE = ["#fabebe", "#008080", "#e6beff", "#9a6324", "#fffac8",
+                    "#800000", "#aaffc3", "#808000", "#ffd8b1", "#000075"]
+
+
+def color_for_sensor(name: str, fallback_index: int = 0) -> str:
+    if name in SENSOR_COLORS:
+        return SENSOR_COLORS[name]
+    return FALLBACK_PALETTE[fallback_index % len(FALLBACK_PALETTE)]
+
+
 def make_widget(parent=None):
     import pyqtgraph as pg
+    from PyQt6.QtGui import QColor
     from PyQt6.QtWidgets import QWidget, QVBoxLayout
 
     class HistoryWidget(QWidget):
@@ -46,7 +67,10 @@ def make_widget(parent=None):
             self.plot = pg.PlotWidget()
             self.plot.setLabel("left", "°C")
             self.plot.setLabel("bottom", "Zeit (s)")
-            self.plot.addLegend()
+            self.plot.showGrid(x=True, y=True, alpha=0.25)
+            self.legend = self.plot.addLegend(offset=(-10, 10),
+                                              labelTextColor="w",
+                                              brush=(40, 40, 40, 200))
             lay.addWidget(self.plot)
             self._curves: dict[str, pg.PlotDataItem] = {}
 
@@ -57,7 +81,9 @@ def make_widget(parent=None):
             t0 = min(all_t) if all_t else 0.0
             for name, (xs, ys) in per.items():
                 if name not in self._curves:
-                    self._curves[name] = self.plot.plot(name=name)
+                    color = color_for_sensor(name, fallback_index=len(self._curves))
+                    pen = pg.mkPen(color=QColor(color), width=2)
+                    self._curves[name] = self.plot.plot(name=name, pen=pen)
                 self._curves[name].setData([x - t0 for x in xs], ys)
 
     return HistoryWidget(parent)
