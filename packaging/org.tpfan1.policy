@@ -33,4 +33,14 @@
     <description>Konfiguration neu laden</description>
     <defaults><allow_active>auth_admin_keep</allow_active></defaults>
   </action>
+
+  <action id="org.tpfan1.manage-presets">
+    <description>Eigene Lüfter-Presets verwalten</description>
+    <message>Authentifizierung erforderlich, um eigene Presets zu speichern oder zu löschen.</message>
+    <defaults>
+      <allow_active>auth_admin_keep</allow_active>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_any>no</allow_any>
+    </defaults>
+  </action>
 </policyconfig>
