@@ -57,10 +57,12 @@ class StatusView(QWidget):
         form = QFormLayout(gb_general)
         self.mode_lbl = QLabel("—")
         self.level_lbl = QLabel("—")
+        self.fan_rpm_lbl = QLabel("—")
         self.failsafe_lbl = QLabel("—")
         self.version_lbl = QLabel("—")
         form.addRow("Modus:", self.mode_lbl)
         form.addRow("Aktueller Level:", self.level_lbl)
+        form.addRow("Lüfter-Drehzahl:", self.fan_rpm_lbl)
         form.addRow("Failsafe-Schwelle:", self.failsafe_lbl)
         form.addRow("Version:", self.version_lbl)
         root.addWidget(gb_general)
@@ -140,6 +142,7 @@ class StatusView(QWidget):
         curve = self._get("Curve") or []
         self.mode_lbl.setText(format_mode_label(str(mode) if mode else "—", curve))
         self._set_label(self.level_lbl, self._get("CurrentLevel"))
+        self.fan_rpm_lbl.setText(self._format_fan_rpm(self._get("Fans")))
         fs = self._get("FailsafeTemp")
         self.failsafe_lbl.setText(f"{float(fs):.1f} °C" if fs is not None else "—")
         daemon_v = self._get("DaemonVersion")
@@ -186,3 +189,16 @@ class StatusView(QWidget):
     @staticmethod
     def _set_label(lbl: QLabel, value: Any) -> None:
         lbl.setText(str(value) if value not in (None, "") else "—")
+
+    @staticmethod
+    def _format_fan_rpm(fans: Any) -> str:
+        if not fans:
+            return "—"
+        rpms: list[str] = []
+        for entry in fans:
+            try:
+                rpm = int(entry[0])
+            except (TypeError, ValueError, IndexError):
+                continue
+            rpms.append(f"{rpm} RPM")
+        return " / ".join(rpms) if rpms else "—"

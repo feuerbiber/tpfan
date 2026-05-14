@@ -55,6 +55,20 @@ def test_rpm_rows_ignores_malformed_entries():
     assert rows["3"][1] == "—"
 
 
+def test_status_shows_current_fan_rpm(qtbot):
+    v = StatusView(_FakeClient({"Fans": [(2200, 255), (2150, 255)]}))
+    qtbot.addWidget(v)
+    v.refresh()
+    assert v.fan_rpm_lbl.text() == "2200 RPM / 2150 RPM"
+
+
+def test_status_fan_rpm_dash_when_empty(qtbot):
+    v = StatusView(_FakeClient({}))
+    qtbot.addWidget(v)
+    v.refresh()
+    assert v.fan_rpm_lbl.text() == "—"
+
+
 def test_status_pulls_rpm_stats_from_daemon(qtbot):
     v = StatusView(_FakeClient({"LevelRpmStats": {"3": (2750, 2700, 2800, 4)}}))
     qtbot.addWidget(v)
