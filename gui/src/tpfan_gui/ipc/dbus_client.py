@@ -52,6 +52,10 @@ class _ProxyOps:
 
     def set_mode(self, mode: str): self._require_proxy().SetMode(mode)
     def set_curve(self, points, sensors): self._require_proxy().SetCurve(points, sensors)
+    def save_user_preset(self, name: str, points, sensors):
+        self._require_proxy().SaveUserPreset(name, points, sensors)
+    def delete_user_preset(self, name: str):
+        self._require_proxy().DeleteUserPreset(name)
     def set_manual_level(self, lvl: str): self._require_proxy().SetManualLevel(lvl)
     def set_failsafe_temp(self, t: float): self._require_proxy().SetFailsafeTemp(t)
     def reload_config(self): self._require_proxy().ReloadConfig()

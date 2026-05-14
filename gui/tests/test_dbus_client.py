@@ -88,3 +88,41 @@ def test_set_methods_delegate_when_connected():
         ("ReloadConfig",),
     ]
     assert c.get("Mode") == "auto"
+
+
+def test_save_user_preset_calls_proxy():
+    from tpfan_gui.ipc.dbus_client import _ProxyOps
+
+    class FakeProxy:
+        def __init__(self):
+            self.calls = []
+        def SaveUserPreset(self, name, points, sensors):
+            self.calls.append(("save", name, points, sensors))
+        def DeleteUserPreset(self, name):
+            self.calls.append(("delete", name))
+
+    class C(_ProxyOps, _DummyClient):
+        pass
+
+    proxy = FakeProxy()
+    c = C(proxy=proxy)
+    c.save_user_preset("P", [(40.0, 0), (80.0, 7)], ["CPU"])
+    c.delete_user_preset("P")
+    assert proxy.calls == [
+        ("save", "P", [(40.0, 0), (80.0, 7)], ["CPU"]),
+        ("delete", "P"),
+    ]
+
+
+def test_user_preset_methods_raise_when_disconnected():
+    import pytest
+    from tpfan_gui.ipc.dbus_client import _ProxyOps, DaemonNotConnected
+
+    class C(_ProxyOps, _DummyClient):
+        pass
+
+    c = C(proxy=None)
+    with pytest.raises(DaemonNotConnected):
+        c.save_user_preset("P", [(40.0, 0), (80.0, 7)], ["CPU"])
+    with pytest.raises(DaemonNotConnected):
+        c.delete_user_preset("P")
