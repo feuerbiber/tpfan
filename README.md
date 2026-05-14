@@ -7,18 +7,29 @@ Implementierungsplan siehe `docs/superpowers/plans/2026-05-13-tpfan-implementati
 
 ## Installation
 
-    # Voraussetzungen (Fedora):
-    sudo dnf install python3-pip python3-gobject dbus-daemon polkit
-    # einmaliges Modul-Setup:
-    sudo cp packaging/tpfan-modprobe.conf /etc/modprobe.d/tpfan.conf
-    sudo modprobe -r thinkpad_acpi && sudo modprobe thinkpad_acpi
+Komfort-Skript (Fedora-artige Distros):
 
-    # System-Install:
-    sudo make install
-    sudo systemctl enable --now tpfan-daemon
+    sudo ./scripts/install.sh
 
-    # GUI starten:
+Das Skript installiert System-Abhängigkeiten (`dnf`), die Python-Pakete systemweit,
+alle Packaging-Dateien (systemd, D-Bus, polkit, modprobe, Desktop-Entry), lädt
+`thinkpad_acpi` mit `fan_control=1` neu und aktiviert den Service.
+
+GUI starten:
+
     tpfan-gui
+
+Deinstallation:
+
+    sudo ./scripts/install.sh --uninstall
+
+Manuell (falls nicht-Fedora oder feinere Kontrolle gewünscht):
+
+    sudo dnf install python3-pip python3-gobject dbus-daemon polkit
+    sudo /usr/bin/python3 -m pip install --break-system-packages ./daemon ./gui
+    sudo make install
+    sudo modprobe -r thinkpad_acpi && sudo modprobe thinkpad_acpi
+    sudo systemctl enable --now tpfan-daemon
 
 ## Entwicklung
 
