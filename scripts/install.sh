@@ -50,8 +50,16 @@ install_system_deps() {
     distro=$(detect_distro)
     case "$distro" in
         fedora|rhel|centos)
-            log "installiere System-Abhängigkeiten via dnf: ${DNF_DEPS[*]}"
-            dnf install -y "${DNF_DEPS[@]}"
+            local missing=()
+            for pkg in "${DNF_DEPS[@]}"; do
+                rpm -q "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
+            done
+            if [[ ${#missing[@]} -eq 0 ]]; then
+                log "System-Abhängigkeiten bereits installiert: ${DNF_DEPS[*]}"
+                return 0
+            fi
+            log "installiere fehlende System-Abhängigkeiten via dnf: ${missing[*]}"
+            dnf install -y --setopt=install_weak_deps=False "${missing[@]}"
             ;;
         *)
             warn "Distro '$distro' nicht direkt unterstützt — überspringe System-Deps"
