@@ -42,11 +42,16 @@ class CurveModel:
 HIT_THRESHOLD_PX = 12
 
 PRESETS: list[tuple[str, list[tuple[float, int]]]] = [
-    ("Sehr ruhig",  [(45.0, 0), (62.0, 1), (75.0, 3), (85.0, 5), (95.0, 7)]),
-    ("Ruhig",       [(42.0, 0), (55.0, 1), (68.0, 3), (78.0, 5), (88.0, 7)]),
-    ("Ausgewogen",  [(40.0, 0), (52.0, 2), (62.0, 4), (72.0, 5), (82.0, 7)]),
-    ("Kühl",        [(40.0, 1), (50.0, 3), (60.0, 5), (70.0, 6), (80.0, 7)]),
-    ("Sehr kühl",   [(40.0, 2), (48.0, 4), (56.0, 6), (65.0, 7), (75.0, 7)]),
+    ("Sehr ruhig",  [(45.0, 0), (60.0, 1), (70.0, 2), (76.0, 3),
+                     (82.0, 4), (87.0, 5), (91.0, 6), (95.0, 7)]),
+    ("Ruhig",       [(42.0, 0), (55.0, 1), (64.0, 2), (72.0, 3),
+                     (78.0, 4), (83.0, 5), (87.0, 6), (91.0, 7)]),
+    ("Ausgewogen",  [(40.0, 0), (50.0, 1), (58.0, 2), (66.0, 3),
+                     (72.0, 4), (78.0, 5), (83.0, 6), (88.0, 7)]),
+    ("Kühl",        [(40.0, 0), (48.0, 2), (55.0, 3), (62.0, 4),
+                     (68.0, 5), (74.0, 6), (80.0, 7)]),
+    ("Sehr kühl",   [(40.0, 1), (45.0, 2), (50.0, 3), (55.0, 4),
+                     (60.0, 5), (65.0, 6), (70.0, 7)]),
 ]
 
 
@@ -117,7 +122,7 @@ def make_widget(model: CurveModel, on_change, parent=None):
             self.preset_buttons: list[QPushButton] = []
             for name, pts in PRESETS:
                 b = QPushButton(name)
-                b.setToolTip(f"Kurve auf '{name}' setzen und sofort anwenden")
+                b.setToolTip(f"Kurve auf '{name}' setzen (mit 'Anwenden' bestätigen)")
                 b.clicked.connect(lambda _=False, p=pts: self.apply_preset(p))
                 preset_row.addWidget(b)
                 self.preset_buttons.append(b)
@@ -202,7 +207,6 @@ def make_widget(model: CurveModel, on_change, parent=None):
         def apply_preset(self, points: list[tuple[float, int]]) -> None:
             model.points = [(float(t), int(l)) for t, l in points]
             self.refresh()
-            on_change(list(model.points))
 
         def commit(self):
             on_change(list(model.points))

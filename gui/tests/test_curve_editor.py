@@ -63,16 +63,19 @@ def test_presets_are_valid_curves():
     names = [n for n, _ in PRESETS]
     assert names[0] == "Sehr ruhig" and names[-1] == "Sehr kühl"
     for name, pts in PRESETS:
-        assert len(pts) >= 2
+        assert len(pts) >= 7, f"{name}: zu wenig Stützpunkte ({len(pts)})"
         ts = [t for t, _ in pts]
+        lvls = [l for _, l in pts]
         assert ts == sorted(ts)
         for i in range(1, len(ts)):
             assert ts[i] - ts[i - 1] >= 0.5
-        for _, lvl in pts:
+        for lvl in lvls:
             assert 0 <= lvl <= 7
+        # Endpunkt soll Volllast erreichen
+        assert lvls[-1] == 7
 
 
-def test_apply_preset_replaces_curve_and_emits(qtbot):
+def test_apply_preset_replaces_curve_without_emitting(qtbot):
     pytest.importorskip("pyqtgraph")
     from tpfan_gui.views.curve_editor import make_widget, PRESETS
     received: list = []
@@ -82,6 +85,8 @@ def test_apply_preset_replaces_curve_and_emits(qtbot):
     w.preset_buttons[0].click()  # "Sehr ruhig"
     expected = [(float(t), int(l)) for t, l in PRESETS[0][1]]
     assert m.points == expected
+    assert received == []  # preset alleine sendet nichts
+    w.apply_btn.click()
     assert received == [expected]
 
 
