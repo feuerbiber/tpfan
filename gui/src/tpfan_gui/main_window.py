@@ -47,6 +47,11 @@ class MainWindow(QMainWindow):
 
         self._t0 = None
 
+        # Daemon kann bereits verbunden sein, bevor wir den Slot registriert haben
+        # (make_client() ruft _try_connect() synchron in __init__). Daher initial syncen.
+        self._sync_curve_from_daemon()
+        self._sync_user_presets_from_daemon()
+
     @staticmethod
     def _friendly_error(e: Exception) -> str:
         msg = str(e)
