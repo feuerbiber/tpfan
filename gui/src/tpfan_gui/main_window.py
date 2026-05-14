@@ -99,3 +99,19 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Verbunden" if ok else "Daemon nicht erreichbar")
         if ok:
             self._t0 = None
+            self._sync_curve_from_daemon()
+
+    def _sync_curve_from_daemon(self) -> None:
+        try:
+            pts = self.client.get("Curve")
+        except Exception:
+            return
+        if not pts:
+            return
+        try:
+            self.curve_model.points = [(float(t), int(l)) for t, l in pts]
+        except (TypeError, ValueError):
+            return
+        refresh = getattr(self.curve_editor, "refresh", None)
+        if callable(refresh):
+            refresh()
