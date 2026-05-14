@@ -28,6 +28,23 @@ DNF_DEPS=(python3-pip python3-gobject dbus-daemon polkit)
 log()  { printf '\033[1;34m[tpfan]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[tpfan]\033[0m %s\n' "$*" >&2; }
 err()  { printf '\033[1;31m[tpfan]\033[0m %s\n' "$*" >&2; }
+ok()   { printf '\033[1;32m[tpfan]\033[0m %s\n' "$*"; }
+
+# step "Beschreibung" func [args...] — meldet 'done' oder 'FEHLER'.
+step() {
+    local desc=$1; shift
+    log "$desc …"
+    set +e
+    "$@"
+    local rc=$?
+    set -e
+    if [[ $rc -eq 0 ]]; then
+        ok "  ✓ done — $desc"
+    else
+        err "  ✗ FEHLER — $desc (rc=$rc)"
+        exit $rc
+    fi
+}
 
 require_root() {
     if [[ $EUID -ne 0 ]]; then
@@ -180,13 +197,13 @@ uninstall_packaging() {
 
 do_install() {
     require_root
-    install_system_deps
-    install_python_packages
-    install_packaging
-    reload_kernel_module
-    enable_service
-    smoke_check
-    log "fertig. GUI starten mit: tpfan-gui"
+    step "System-Abhängigkeiten prüfen"  install_system_deps
+    step "Python-Pakete installieren"    install_python_packages
+    step "Packaging-Dateien kopieren"    install_packaging
+    step "Kernel-Modul neu laden"        reload_kernel_module
+    step "systemd-Service aktivieren"    enable_service
+    step "Smoke-Check"                   smoke_check
+    ok "fertig. GUI starten mit: tpfan-gui"
 }
 
 remove_config() {
@@ -214,16 +231,19 @@ reload_module_without_fan_control() {
     fi
 }
 
+stop_service() {
+    systemctl disable --now tpfan-daemon.service 2>/dev/null || true
+}
+
 do_uninstall() {
     require_root
-    log "stoppe und deaktiviere Service"
-    systemctl disable --now tpfan-daemon.service 2>/dev/null || true
-    uninstall_packaging
-    uninstall_python_packages
-    remove_config
-    remove_state
-    reload_module_without_fan_control
-    log "fertig."
+    step "Service stoppen und deaktivieren" stop_service
+    step "Packaging-Dateien entfernen"      uninstall_packaging
+    step "Python-Pakete deinstallieren"     uninstall_python_packages
+    step "Config-Verzeichnis entfernen"     remove_config
+    step "State-Verzeichnis entfernen"      remove_state
+    step "Kernel-Modul ohne fan_control neu laden" reload_module_without_fan_control
+    ok "fertig."
 }
 
 case "${1:-install}" in
