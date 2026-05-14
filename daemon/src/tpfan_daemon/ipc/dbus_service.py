@@ -93,6 +93,18 @@ class TpfanService:
     def DaemonVersion(self) -> Str:
         return __version__
 
+    @property
+    def LevelRpmStats(self) -> Dict[Str, Tuple[UInt32, UInt32, UInt32, UInt32]]:
+        stats = self._state().get("rpm_stats") or {}
+        out: dict[str, tuple[int, int, int, int]] = {}
+        for lvl, vals in stats.items():
+            try:
+                last, mn, mx, n = vals
+                out[str(lvl)] = (int(last), int(mn), int(mx), int(n))
+            except (TypeError, ValueError):
+                continue
+        return out
+
     # --- Methoden ---
     @accepts_additional_arguments
     def SetMode(self, mode: Str, *, call_info) -> None:
@@ -118,6 +130,9 @@ class TpfanService:
     def ReloadConfig(self, *, call_info) -> None:
         self._check("org.tpfan1.reload-config", call_info.get("sender", ""))
         self._cmd("reload_config")
+
+    def ResetLevelRpmStats(self) -> None:
+        self._cmd("reset_rpm_stats")
 
     # --- Signale ---
     @dbus_signal

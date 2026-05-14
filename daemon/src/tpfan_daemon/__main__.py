@@ -10,8 +10,11 @@ from .hw.sensors import Sensors
 from .hw.fan import Fan
 from .ipc.dbus_service import TpfanService, BUS_NAME, OBJECT_PATH, level_str_to_byte
 from .ipc.polkit import authorize
+from .rpm_stats import RpmStatsTracker, load_stats, save_stats
 
 CONFIG_PATH = Path(os.environ.get("TPFAN_CONFIG", "/etc/tpfan/config.toml"))
+RPM_STATS_PATH = Path(os.environ.get("TPFAN_RPM_STATS", "/var/lib/tpfan/rpm_stats.json"))
+RPM_STATS_SAVE_EVERY = 60  # ticks (≈ 1 min)
 
 
 def _setup_logging():
@@ -47,14 +50,22 @@ def main() -> int:
         return 1
 
     daemon = Daemon(CONFIG_PATH, sensors, fan)
+    rpm_stats = load_stats(RPM_STATS_PATH)
     bus = SystemMessageBus()
 
     def authorizer(sender: str, action: str) -> None:
         authorize(bus, sender, action)
 
+    def handle_cmd(cmd: str, *args):
+        if cmd == "reset_rpm_stats":
+            rpm_stats.reset()
+            save_stats(RPM_STATS_PATH, rpm_stats)
+            return
+        return daemon.handle(cmd, *args)
+
     service = TpfanService(
-        state_getter=lambda: _state_dict(daemon, sensors),
-        command_handler=daemon.handle,
+        state_getter=lambda: _state_dict(daemon, sensors, rpm_stats),
+        command_handler=handle_cmd,
         authorizer=authorizer,
     )
 
@@ -70,10 +81,13 @@ def main() -> int:
             fan.set_level("auto")
         except Exception:
             log.exception("failed to reset fan to auto on shutdown")
+        save_stats(RPM_STATS_PATH, rpm_stats)
         main_loop.quit()
 
     for s in (signal.SIGTERM, signal.SIGINT):
         signal.signal(s, shutdown)
+
+    tick_counter = [0]
 
     def tick():
         try:
@@ -83,6 +97,10 @@ def main() -> int:
             service.Tick(tr.temps, fans_payload, tr.target_level)
             if tr.emergency:
                 service.EmergencyTriggered(tr.emergency[0], tr.emergency[1])
+            rpm_stats.record(tr.target_level, int(fan_state.speed_rpm))
+            tick_counter[0] += 1
+            if tick_counter[0] % RPM_STATS_SAVE_EVERY == 0:
+                save_stats(RPM_STATS_PATH, rpm_stats)
         except Exception:
             log.exception("tick failed")
         finally:
@@ -94,7 +112,7 @@ def main() -> int:
     return 0
 
 
-def _state_dict(d: Daemon, sensors: Sensors) -> dict:
+def _state_dict(d: Daemon, sensors: Sensors, rpm_stats: RpmStatsTracker) -> dict:
     return {
         "mode": d.loop.config.mode,
         "level": d.loop.last_level,
@@ -104,6 +122,7 @@ def _state_dict(d: Daemon, sensors: Sensors) -> dict:
         "curve": d.loop.config.curve,
         "curve_sensors": list(d.loop.config.curve.sensors),
         "failsafe_temp": d.loop.config.failsafe_temp,
+        "rpm_stats": rpm_stats.as_dict(),
     }
 
 

@@ -1,5 +1,4 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
 from typing import Any
 
 from PyQt6.QtCore import Qt
@@ -11,37 +10,23 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QGroupBox,
 LEVEL_ORDER = ["0", "1", "2", "3", "4", "5", "6", "7", "auto", "disengaged"]
 
 
-@dataclass
-class LevelRpmTracker:
-    """Sammelt RPM-Beobachtungen pro Lüfter-Level aus dem Tick-Stream."""
-    last: dict[str, int] = field(default_factory=dict)
-    minv: dict[str, int] = field(default_factory=dict)
-    maxv: dict[str, int] = field(default_factory=dict)
-    count: dict[str, int] = field(default_factory=dict)
+def rpm_rows(stats: dict) -> list[tuple[str, str, str, str]]:
+    """Bringt das vom Daemon gelieferte Stats-Dict in Tabellenform.
 
-    def record(self, level: str, rpm: int) -> None:
-        if not level or rpm < 0:
-            return
-        self.last[level] = rpm
-        self.count[level] = self.count.get(level, 0) + 1
-        if level not in self.minv or rpm < self.minv[level]:
-            self.minv[level] = rpm
-        if level not in self.maxv or rpm > self.maxv[level]:
-            self.maxv[level] = rpm
-
-    def rows(self) -> list[tuple[str, str, str, str]]:
-        out: list[tuple[str, str, str, str]] = []
-        for lvl in LEVEL_ORDER:
-            if lvl in self.last:
-                out.append((
-                    lvl,
-                    str(self.last[lvl]),
-                    f"{self.minv[lvl]} / {self.maxv[lvl]}",
-                    str(self.count[lvl]),
-                ))
-            else:
-                out.append((lvl, "—", "—", "0"))
-        return out
+    stats: dict[level -> (last, min, max, count)] (alle int).
+    """
+    out: list[tuple[str, str, str, str]] = []
+    for lvl in LEVEL_ORDER:
+        v = stats.get(lvl)
+        if v:
+            try:
+                last, mn, mx, n = v
+                out.append((lvl, str(int(last)), f"{int(mn)} / {int(mx)}", str(int(n))))
+                continue
+            except (TypeError, ValueError):
+                pass
+        out.append((lvl, "—", "—", "0"))
+    return out
 
 
 def _fmt_curve(points: list) -> list[tuple[str, str]]:
@@ -62,7 +47,6 @@ class StatusView(QWidget):
     def __init__(self, client, parent=None):
         super().__init__(parent)
         self._client = client
-        self.rpm_tracker = LevelRpmTracker()
 
         root = QVBoxLayout(self)
 
@@ -96,8 +80,9 @@ class StatusView(QWidget):
 
         gb_rpm = QGroupBox("Beobachtete Drehzahlen pro Level")
         rl = QVBoxLayout(gb_rpm)
-        hint = QLabel("Werte aus dem laufenden Tick-Stream — RPM-zu-Level-Zuordnung ist nicht "
-                      "fest in der Firmware definiert und kann variieren.")
+        hint = QLabel("Werte werden im Daemon gesammelt (auch ohne GUI). "
+                      "RPM-zu-Level-Zuordnung ist nicht fest in der Firmware "
+                      "definiert und kann variieren.")
         hint.setWordWrap(True)
         rl.addWidget(hint)
         self.rpm_table = QTableWidget(0, 4)
@@ -129,17 +114,12 @@ class StatusView(QWidget):
         h += 2 * t.frameWidth()
         t.setFixedHeight(h)
 
-    def record_tick(self, payload) -> None:
-        try:
-            rpm = int(payload.fans[0][0])
-        except (AttributeError, IndexError, TypeError, ValueError):
-            return
-        level = getattr(payload, "level", "")
-        self.rpm_tracker.record(str(level), rpm)
-
     def _reset_rpm_stats(self) -> None:
-        self.rpm_tracker = LevelRpmTracker()
-        self._refresh_rpm_table()
+        try:
+            self._client.reset_rpm_stats()
+        except Exception:
+            pass
+        self.refresh()
 
     def refresh(self) -> None:
         self._set_label(self.mode_lbl, self._get("Mode"))
@@ -165,7 +145,8 @@ class StatusView(QWidget):
         self._refresh_rpm_table()
 
     def _refresh_rpm_table(self) -> None:
-        rows = self.rpm_tracker.rows()
+        stats = self._get("LevelRpmStats") or {}
+        rows = rpm_rows(dict(stats))
         self.rpm_table.setRowCount(len(rows))
         for i, cells in enumerate(rows):
             for j, val in enumerate(cells):
