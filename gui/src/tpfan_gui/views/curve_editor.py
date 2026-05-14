@@ -41,6 +41,14 @@ class CurveModel:
 
 HIT_THRESHOLD_PX = 12
 
+PRESETS: list[tuple[str, list[tuple[float, int]]]] = [
+    ("Sehr ruhig",  [(45.0, 0), (62.0, 1), (75.0, 3), (85.0, 5), (95.0, 7)]),
+    ("Ruhig",       [(42.0, 0), (55.0, 1), (68.0, 3), (78.0, 5), (88.0, 7)]),
+    ("Ausgewogen",  [(40.0, 0), (52.0, 2), (62.0, 4), (72.0, 5), (82.0, 7)]),
+    ("Kühl",        [(40.0, 1), (50.0, 3), (60.0, 5), (70.0, 6), (80.0, 7)]),
+    ("Sehr kühl",   [(40.0, 2), (48.0, 4), (56.0, 6), (65.0, 7), (75.0, 7)]),
+]
+
 
 def make_widget(model: CurveModel, on_change, parent=None):
     """on_change(points) wird gerufen, wenn der User Apply klickt."""
@@ -103,6 +111,17 @@ def make_widget(model: CurveModel, on_change, parent=None):
             self.hint.setTextFormat(Qt.TextFormat.RichText)
             self.hint.setWordWrap(True)
             lay.addWidget(self.hint)
+
+            preset_row = QHBoxLayout()
+            preset_row.addWidget(QLabel("Vorlage:"))
+            self.preset_buttons: list[QPushButton] = []
+            for name, pts in PRESETS:
+                b = QPushButton(name)
+                b.setToolTip(f"Kurve auf '{name}' setzen und sofort anwenden")
+                b.clicked.connect(lambda _=False, p=pts: self.apply_preset(p))
+                preset_row.addWidget(b)
+                self.preset_buttons.append(b)
+            lay.addLayout(preset_row)
 
             row = QHBoxLayout()
             self.apply_btn = QPushButton("Anwenden")
@@ -179,6 +198,11 @@ def make_widget(model: CurveModel, on_change, parent=None):
                 except ValueError:
                     return
                 self.refresh()
+
+        def apply_preset(self, points: list[tuple[float, int]]) -> None:
+            model.points = [(float(t), int(l)) for t, l in points]
+            self.refresh()
+            on_change(list(model.points))
 
         def commit(self):
             on_change(list(model.points))

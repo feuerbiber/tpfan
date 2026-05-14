@@ -57,6 +57,34 @@ def test_add_rejects_too_close():
         m.add(60.3, 5)
 
 
+def test_presets_are_valid_curves():
+    from tpfan_gui.views.curve_editor import PRESETS
+    assert len(PRESETS) == 5
+    names = [n for n, _ in PRESETS]
+    assert names[0] == "Sehr ruhig" and names[-1] == "Sehr kühl"
+    for name, pts in PRESETS:
+        assert len(pts) >= 2
+        ts = [t for t, _ in pts]
+        assert ts == sorted(ts)
+        for i in range(1, len(ts)):
+            assert ts[i] - ts[i - 1] >= 0.5
+        for _, lvl in pts:
+            assert 0 <= lvl <= 7
+
+
+def test_apply_preset_replaces_curve_and_emits(qtbot):
+    pytest.importorskip("pyqtgraph")
+    from tpfan_gui.views.curve_editor import make_widget, PRESETS
+    received: list = []
+    m = CurveModel(points=[(40.0, 0), (80.0, 7)])
+    w = make_widget(m, lambda pts: received.append(list(pts)))
+    qtbot.addWidget(w)
+    w.preset_buttons[0].click()  # "Sehr ruhig"
+    expected = [(float(t), int(l)) for t, l in PRESETS[0][1]]
+    assert m.points == expected
+    assert received == [expected]
+
+
 def test_apply_button_triggers_on_change(qtbot):
     pytest.importorskip("pyqtgraph")
     from tpfan_gui.views.curve_editor import make_widget
