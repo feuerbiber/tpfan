@@ -89,6 +89,18 @@ def test_boot_grace_releases_after_window():
     assert fan.level == "2"
 
 
+def test_boot_grace_remaining_counts_down():
+    cfg = Config(mode="curve", curve=CurveCfg(("CPU",), ((40.0, 0), (80.0, 7))))
+    t = [0.0]
+    loop = ControlLoop(sensors=FakeSensors({}), fan=FakeFan(), config=cfg,
+                       clock=_clock(t), boot_grace_seconds=30.0)
+    assert loop.boot_grace_remaining() == 30.0
+    t[0] = 20.0
+    assert loop.boot_grace_remaining() == 10.0
+    t[0] = 45.0
+    assert loop.boot_grace_remaining() == 0.0
+
+
 def test_boot_grace_does_not_block_failsafe():
     cfg = Config(mode="curve", failsafe_temp=70.0,
                  curve=CurveCfg(("CPU",), ((40.0, 0), (80.0, 7))))

@@ -55,6 +55,21 @@ def test_rpm_rows_ignores_malformed_entries():
     assert rows["3"][1] == "—"
 
 
+def test_status_shows_boot_grace_remaining(qtbot):
+    v = StatusView(_FakeClient({"BootGraceRemaining": 12.4}))
+    qtbot.addWidget(v)
+    v.refresh()
+    assert "12" in v.boot_grace_lbl.text()
+    assert "s" in v.boot_grace_lbl.text()
+
+
+def test_status_boot_grace_dash_when_zero(qtbot):
+    v = StatusView(_FakeClient({"BootGraceRemaining": 0.0}))
+    qtbot.addWidget(v)
+    v.refresh()
+    assert v.boot_grace_lbl.text() == "—"
+
+
 def test_status_shows_current_fan_rpm(qtbot):
     v = StatusView(_FakeClient({"Fans": [(2200, 255), (2150, 255)]}))
     qtbot.addWidget(v)

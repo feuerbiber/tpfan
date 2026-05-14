@@ -124,6 +124,7 @@ def _state_dict(d: Daemon, sensors: Sensors, rpm_stats: RpmStatsTracker) -> dict
         "failsafe_temp": d.loop.config.failsafe_temp,
         "rpm_stats": rpm_stats.as_dict(),
         "user_presets": d.loop.config.user_presets,
+        "boot_grace_remaining": d.loop.boot_grace_remaining(),
     }
 
 

@@ -59,11 +59,13 @@ class StatusView(QWidget):
         self.level_lbl = QLabel("—")
         self.fan_rpm_lbl = QLabel("—")
         self.failsafe_lbl = QLabel("—")
+        self.boot_grace_lbl = QLabel("—")
         self.version_lbl = QLabel("—")
         form.addRow("Modus:", self.mode_lbl)
         form.addRow("Aktueller Level:", self.level_lbl)
         form.addRow("Lüfter-Drehzahl:", self.fan_rpm_lbl)
         form.addRow("Failsafe-Schwelle:", self.failsafe_lbl)
+        form.addRow("Boot-Grace:", self.boot_grace_lbl)
         form.addRow("Version:", self.version_lbl)
         root.addWidget(gb_general)
 
@@ -145,6 +147,12 @@ class StatusView(QWidget):
         self.fan_rpm_lbl.setText(self._format_fan_rpm(self._get("Fans")))
         fs = self._get("FailsafeTemp")
         self.failsafe_lbl.setText(f"{float(fs):.1f} °C" if fs is not None else "—")
+        bg = self._get("BootGraceRemaining")
+        try:
+            bgf = float(bg) if bg is not None else 0.0
+        except (TypeError, ValueError):
+            bgf = 0.0
+        self.boot_grace_lbl.setText(f"noch {bgf:.0f} s (auto)" if bgf > 0 else "—")
         daemon_v = self._get("DaemonVersion")
         if daemon_v and str(daemon_v) == GUI_VERSION:
             self.version_lbl.setText(GUI_VERSION)

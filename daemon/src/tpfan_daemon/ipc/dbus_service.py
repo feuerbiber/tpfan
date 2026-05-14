@@ -96,6 +96,10 @@ class TpfanService:
         return out
 
     @property
+    def BootGraceRemaining(self) -> Double:
+        return float(self._state().get("boot_grace_remaining", 0.0))
+
+    @property
     def FailsafeTemp(self) -> Double:
         return float(self._state().get("failsafe_temp", 95.0))
 

@@ -49,6 +49,9 @@ class ControlLoop:
     def last_level(self) -> str:
         return self._last_level
 
+    def boot_grace_remaining(self) -> float:
+        return max(0.0, self.boot_grace_seconds - (self.clock() - self._started_at))
+
     def set_config(self, cfg: Config) -> None:
         old = self.config
         if old.mode != cfg.mode or old.curve != cfg.curve:
