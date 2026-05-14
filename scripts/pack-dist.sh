@@ -28,6 +28,7 @@ tar \
     --exclude='.coverage' \
     --exclude='build' \
     --exclude='dist' \
+    --exclude='scripts/pack-dist.sh' \
     -czf "$OUT" \
     daemon/pyproject.toml daemon/src daemon/tests \
     gui/pyproject.toml gui/src gui/tests \
