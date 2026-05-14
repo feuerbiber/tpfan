@@ -1,7 +1,9 @@
 from __future__ import annotations
+import math
 from typing import Sequence
 
 HYSTERESIS_C = 3.0
+RISING_HYSTERESIS_C = 2.0
 Point = tuple[float, int]
 
 
@@ -30,9 +32,14 @@ def threshold_for_level(points: Sequence[Point], level: int) -> float:
 
 
 def interpolate(points: Sequence[Point], t: float, prev_level: int) -> int:
-    raw = round(_raw_level(points, t))
+    raw = math.floor(_raw_level(points, t))
     raw = max(0, min(7, raw))
-    if raw >= prev_level:
+    if raw == prev_level:
+        return raw
+    if raw > prev_level:
+        thr = threshold_for_level(points, prev_level + 1)
+        if t < thr + RISING_HYSTERESIS_C:
+            return prev_level
         return raw
     thr = threshold_for_level(points, prev_level)
     if t >= thr - HYSTERESIS_C:

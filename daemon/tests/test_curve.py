@@ -9,15 +9,15 @@ POINTS = [(40.0, 0), (55.0, 2), (70.0, 4), (80.0, 7)]
 @pytest.mark.parametrize("t,prev,expected", [
     (30.0, 0, 0),
     (40.0, 0, 0),
-    (47.5, 0, 1),
+    (47.5, 0, 0),
     (55.0, 0, 2),
     (62.5, 0, 3),
     (70.0, 0, 4),
-    (75.0, 0, 6),
+    (75.0, 0, 5),
     (80.0, 0, 7),
     (95.0, 0, 7),
 ])
-def test_steigend_keine_hysterese(t, prev, expected):
+def test_steigend_grosse_spruenge_erlaubt(t, prev, expected):
     assert interpolate(POINTS, t, prev) == expected
 
 
@@ -26,7 +26,21 @@ def test_hysterese_haelt_level_bei_kleinem_drop():
 
 
 def test_hysterese_release_unter_drei_grad():
-    assert interpolate(POINTS, 60.0, 4) == 3
+    assert interpolate(POINTS, 60.0, 4) == 2
+
+
+def test_rising_hysterese_blockiert_knapp_ueber_schwelle():
+    # Schwelle für Level 2 ist 55 °C; +2 °C Buffer -> erst ab 57 °C
+    assert interpolate(POINTS, 56.5, 1) == 1
+
+
+def test_rising_hysterese_release_nach_buffer():
+    assert interpolate(POINTS, 57.0, 1) == 2
+
+
+def test_rising_hysterese_blockiert_nicht_grossen_sprung():
+    # Großer Sprung von Idle direkt in heiße Zone — sofort erlaubt
+    assert interpolate(POINTS, 75.0, 0) == 5
 
 
 def test_threshold_for_level():
@@ -40,4 +54,4 @@ def test_unter_erstem_punkt_clampt():
 
 
 def test_zwei_punkte_minimal():
-    assert interpolate([(40.0, 0), (80.0, 7)], 60.0, 0) == 4
+    assert interpolate([(40.0, 0), (80.0, 7)], 60.0, 0) == 3
