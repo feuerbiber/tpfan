@@ -141,14 +141,33 @@ do_install() {
     log "fertig. GUI starten mit: tpfan-gui"
 }
 
+remove_config() {
+    if [[ -e /etc/tpfan ]]; then
+        log "entferne Config-Verzeichnis /etc/tpfan"
+        rm -rf /etc/tpfan
+    fi
+}
+
+reload_module_without_fan_control() {
+    log "lade thinkpad_acpi neu (ohne fan_control=1)"
+    if lsmod | grep -q '^thinkpad_acpi'; then
+        if modprobe -r thinkpad_acpi 2>/dev/null; then
+            modprobe thinkpad_acpi || warn "modprobe thinkpad_acpi fehlgeschlagen"
+        else
+            warn "konnte thinkpad_acpi nicht entladen (in Benutzung) — Reboot durchführen"
+        fi
+    fi
+}
+
 do_uninstall() {
     require_root
     log "stoppe und deaktiviere Service"
     systemctl disable --now tpfan-daemon.service 2>/dev/null || true
     uninstall_packaging
     uninstall_python_packages
-    log "fertig. /proc/acpi/ibm/fan-Konfiguration in /etc/modprobe.d wurde entfernt;"
-    log "thinkpad_acpi-Modul bleibt geladen. Bei Bedarf manuell entladen oder rebooten."
+    remove_config
+    reload_module_without_fan_control
+    log "fertig."
 }
 
 case "${1:-install}" in
