@@ -41,6 +41,7 @@ def test_curve_drives_fan_over_temp_sweep(tmp_path: Path):
         {"CPU": 60.0},   # deutlich unter Schwelle: drop
     ]
     d = Daemon(cfg_path, DriveSensors(schedule), fan)
+    d.loop.boot_grace_seconds = 0.0
     d.handle("set_mode", "curve")
     d.handle("set_curve", [(40.0, 0), (55.0, 2), (70.0, 4), (80.0, 7)], ["CPU"])
 

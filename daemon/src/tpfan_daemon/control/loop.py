@@ -1,12 +1,15 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Protocol
+from dataclasses import dataclass, field
+from typing import Callable, Protocol
 import logging
+import time
 
 from .curve import interpolate
 from ..config import Config, CurveCfg
 
 log = logging.getLogger(__name__)
+
+BOOT_GRACE_SECONDS = 30.0
 
 
 class SensorsLike(Protocol):
@@ -33,8 +36,14 @@ class ControlLoop:
     sensors: SensorsLike
     fan: FanLike
     config: Config
+    boot_grace_seconds: float = BOOT_GRACE_SECONDS
+    clock: Callable[[], float] = time.monotonic
     _last_level: str = "auto"
     _last_curve_level: int = 0
+    _started_at: float = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._started_at = self.clock()
 
     @property
     def last_level(self) -> str:
@@ -106,6 +115,17 @@ class ControlLoop:
             target = "auto"
             try:
                 if current != target:
+                    self.fan.set_level(target)
+                self._last_level = target
+            except OSError:
+                fallback = True
+            return TickResult(temps, st.speed_rpm, current, target,
+                              fallback_to_auto=fallback)
+
+        if self.clock() - self._started_at < self.boot_grace_seconds:
+            target = "auto"
+            try:
+                if target != current:
                     self.fan.set_level(target)
                 self._last_level = target
             except OSError:

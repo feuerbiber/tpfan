@@ -43,7 +43,8 @@ class FakeFan:
 
 def _loop(temps, cfg=DEFAULT, fan=None):
     fan = fan or FakeFan()
-    return ControlLoop(sensors=FakeSensors(temps), fan=fan, config=cfg), fan
+    return ControlLoop(sensors=FakeSensors(temps), fan=fan, config=cfg,
+                       boot_grace_seconds=0.0), fan
 
 
 def test_auto_mode_sets_auto():
@@ -57,6 +58,47 @@ def test_manual_mode_sets_level():
     loop, fan = _loop({"CPU": 50.0}, cfg=cfg)
     loop.tick()
     assert fan.level == "5"
+
+
+def _clock(value: list[float]):
+    return lambda: value[0]
+
+
+def test_boot_grace_forces_auto_during_grace():
+    cfg = Config(mode="curve",
+                 curve=CurveCfg(("CPU",), ((45.0, 0), (60.0, 1), (70.0, 2), (80.0, 7))))
+    fan = FakeFan()
+    t = [0.0]
+    loop = ControlLoop(sensors=FakeSensors({"CPU": 70.0}), fan=fan, config=cfg,
+                       clock=_clock(t))
+    tr = loop.tick()
+    assert tr.target_level == "auto"
+    assert fan.level == "auto"
+
+
+def test_boot_grace_releases_after_window():
+    cfg = Config(mode="curve",
+                 curve=CurveCfg(("CPU",), ((45.0, 0), (60.0, 1), (70.0, 2), (80.0, 7))))
+    fan = FakeFan()
+    t = [0.0]
+    loop = ControlLoop(sensors=FakeSensors({"CPU": 70.0}), fan=fan, config=cfg,
+                       clock=_clock(t))
+    t[0] = 31.0
+    tr = loop.tick()
+    assert tr.target_level == "2"
+    assert fan.level == "2"
+
+
+def test_boot_grace_does_not_block_failsafe():
+    cfg = Config(mode="curve", failsafe_temp=70.0,
+                 curve=CurveCfg(("CPU",), ((40.0, 0), (80.0, 7))))
+    fan = FakeFan()
+    t = [0.0]
+    loop = ControlLoop(sensors=FakeSensors({"CPU": 75.0}), fan=fan, config=cfg,
+                       clock=_clock(t))
+    tr = loop.tick()
+    assert tr.target_level == "disengaged"
+    assert tr.emergency is not None
 
 
 def test_curve_mode_uses_max_of_sensors():
@@ -133,7 +175,7 @@ def test_sensors_read_failure_falls_back_to_auto():
     fan = FakeFan()
     sensors = FakeSensors({"CPU": 50.0})
     sensors.fail_read = True
-    loop = ControlLoop(sensors=sensors, fan=fan, config=cfg)
+    loop = ControlLoop(sensors=sensors, fan=fan, config=cfg, boot_grace_seconds=0.0)
     tr = loop.tick()
     assert tr.fallback_to_auto is True
     assert tr.temps == {}
