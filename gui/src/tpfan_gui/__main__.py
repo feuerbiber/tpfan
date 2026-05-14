@@ -1,4 +1,5 @@
 from __future__ import annotations
+import argparse
 import sys
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication, QMessageBox
@@ -14,8 +15,19 @@ def _activate_window(win):
     win.activateWindow()
 
 
+def _parse_args(argv):
+    p = argparse.ArgumentParser(prog="tpfan-gui",
+                                description="tpfan ThinkPad-Lüfter-Steuerung GUI")
+    p.add_argument("--tray", action="store_true",
+                   help="nur im System-Tray starten, Hauptfenster zunächst nicht öffnen")
+    # Qt schluckt eigene Argumente weiter unten; unbekannte werden an Qt
+    # weitergereicht, damit z. B. -style/-platform funktionieren.
+    return p.parse_known_args(argv[1:])
+
+
 def main() -> int:
-    app = QApplication(sys.argv)
+    args, qt_argv = _parse_args(sys.argv)
+    app = QApplication([sys.argv[0], *qt_argv])
     app.setApplicationName("tpfan")
     app.setDesktopFileName("tpfan-gui")
     app.setWindowIcon(QIcon.fromTheme("tpfan"))
@@ -73,7 +85,8 @@ def main() -> int:
     client.propertiesChanged.connect(on_props)
 
     tray.show()
-    win.show()
+    if not args.tray:
+        win.show()
 
     run_qt_loop = getattr(app, "exec")
     return run_qt_loop()
