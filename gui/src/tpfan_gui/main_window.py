@@ -18,7 +18,11 @@ class MainWindow(QMainWindow):
         self.curve_model = CurveModel(points=[(40.0, 0), (55.0, 2), (70.0, 4), (80.0, 7)])
         self.dashboard = Dashboard()
         self.history = make_history()
-        self.curve_editor = make_curve_editor(self.curve_model, self._send_curve)
+        self.curve_editor = make_curve_editor(
+            self.curve_model, self._send_curve,
+            on_save_preset=self._save_user_preset,
+            on_delete_preset=self._delete_user_preset,
+        )
         self.modes = ModesPanel(profiles=["quiet", "balanced", "performance"])
         self.status = StatusView(client)
 
@@ -77,6 +81,42 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "tpfan", self._friendly_error(e))
 
+    def _save_user_preset(self, name: str, points):
+        sensors = ["CPU", "GPU", "NVMe"]
+        try:
+            self.client.save_user_preset(name, list(points), sensors)
+            self._sync_user_presets_from_daemon()
+        except Exception as e:
+            QMessageBox.warning(self, "tpfan", self._friendly_error(e))
+
+    def _delete_user_preset(self, name: str):
+        try:
+            self.client.delete_user_preset(name)
+            self._sync_user_presets_from_daemon()
+        except Exception as e:
+            QMessageBox.warning(self, "tpfan", self._friendly_error(e))
+
+    def _sync_user_presets_from_daemon(self) -> None:
+        try:
+            presets = self.client.get("UserPresets")
+        except Exception:
+            return
+        if presets is None:
+            return
+        normalized = {}
+        for name, val in dict(presets).items():
+            try:
+                points, sensors = val
+                normalized[str(name)] = (
+                    [(float(t), int(l)) for t, l in points],
+                    [str(s) for s in sensors],
+                )
+            except (TypeError, ValueError):
+                continue
+        setter = getattr(self.curve_editor, "set_user_presets", None)
+        if callable(setter):
+            setter(normalized)
+
     def _on_tab_changed(self, index: int) -> None:
         if self.tabs.widget(index) is self.status:
             self.status.refresh()
@@ -100,6 +140,7 @@ class MainWindow(QMainWindow):
         if ok:
             self._t0 = None
             self._sync_curve_from_daemon()
+            self._sync_user_presets_from_daemon()
 
     def _sync_curve_from_daemon(self) -> None:
         try:
