@@ -29,8 +29,8 @@ def test_dashboard_shows_session_max(qtbot):
     d.apply_tick(TickPayload(temps={"CPU": 50.0}, fans=[], level="auto"))
     d.apply_tick(TickPayload(temps={"CPU": 60.0}, fans=[], level="auto"))
     d.apply_tick(TickPayload(temps={"CPU": 55.0}, fans=[], level="auto"))
-    assert "55.0" in d.cpu_label.text()
-    assert "max 60.0" in d.cpu_label.text()
+    assert d.cpu_label.text() == "55.0 °C"
+    assert d._max_labels["CPU"].text() == "60.0 °C"
 
 
 def test_dashboard_no_max_before_any_tick(qtbot):
@@ -38,6 +38,7 @@ def test_dashboard_no_max_before_any_tick(qtbot):
     d = Dashboard()
     qtbot.addWidget(d)
     assert d.cpu_label.text() == "--"
+    assert d._max_labels["CPU"].text() == "--"
 
 
 def test_dashboard_resets_fan_labels_when_fewer_fans(qtbot):

@@ -6,13 +6,11 @@ Auf dem Übersichts-Tab erscheint hinter jedem aktuellen Temperaturwert das Sess
 
 ## Format
 
-`42.5 °C  (max 67.3 °C)` im bestehenden Wertelabel — keine zusätzliche Grid-Spalte.
-
-Solange für einen Sensor noch kein Wert eingegangen ist, bleibt das Label `--` ohne Max-Suffix.
+Eigene Tabellenspalte „Max" rechts neben „aktuell". Header-Zeile mit Spaltennamen über den Sensoren. Vor dem ersten Tick zeigen beide Spalten `--`. Wenn ein Sensor einmal beobachtet wurde, behält die Max-Spalte den höchsten Wert auch dann, wenn der Sensor in einem späteren Tick fehlt (aktuell-Spalte wird `--`, Max bleibt).
 
 ## Datenmodell
 
-`Dashboard._max: dict[str, float]` (leer bei `__init__`). Per `apply_tick` wird für jeden im `TickPayload.temps` enthaltenen Sensor `_max[name] = max(_max.get(name, v), v)` aktualisiert. Lebensdauer = Widget-Lebensdauer = GUI-Session.
+`Dashboard._max: dict[str, float]` (leer bei `__init__`); `Dashboard._max_labels: dict[str, QLabel]` pro Sensor. Per `apply_tick` wird für jeden im `TickPayload.temps` enthaltenen Sensor `_max[name] = max(_max.get(name, v), v)` aktualisiert und das Max-Label gesetzt. Lebensdauer = Widget-Lebensdauer = GUI-Session.
 
 ## Scope-Abgrenzung
 
@@ -23,4 +21,4 @@ Solange für einen Sensor noch kein Wert eingegangen ist, bleibt das Label `--` 
 
 ## Tests
 
-`gui/tests/test_dashboard.py` (Datei existiert): ein Test mit zwei `apply_tick`-Aufrufen (CPU steigt 50→60, dann fällt 60→55) und Assert auf den Label-Text, dass `(max 60.0` enthalten ist. Zweiter Test: vor jeglichem Tick zeigt das Label `--` ohne Max-Suffix.
+`gui/tests/test_dashboard.py` (Datei existiert): Test mit drei `apply_tick`-Aufrufen (CPU 50 → 60 → 55), Assert auf `cpu_label == "55.0 °C"` und `_max_labels["CPU"] == "60.0 °C"`. Zweiter Test: vor jeglichem Tick zeigen beide Labels `--`.
