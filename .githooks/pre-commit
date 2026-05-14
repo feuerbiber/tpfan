@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Aktiviert per: git config core.hooksPath .githooks
+# Baut bei jedem Commit das Release-Tarball und nimmt es mit auf,
+# damit der jeweils zur Quelle passende Tarball im Repo liegt.
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+"$repo_root/scripts/pack-dist.sh" >/dev/null
+git add "$repo_root/dist"
