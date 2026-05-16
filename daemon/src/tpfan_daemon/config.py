@@ -93,7 +93,10 @@ def load(path: Path) -> Config:
         raise ValueError(f"invalid manual_level: {manual_level}")
     failsafe_temp = float(raw.get("failsafe_temp", DEFAULT.failsafe_temp))
     curve = _validate_curve(raw["curve"]) if "curve" in raw else DEFAULT.curve
-    profiles = {k: _validate_curve(v) for k, v in raw.get("profiles", {}).items()}
+    profiles = {
+        validate_preset_name(k): _validate_curve(v)
+        for k, v in raw.get("profiles", {}).items()
+    }
     user_presets = {
         validate_preset_name(k): _validate_curve(v)
         for k, v in raw.get("user_presets", {}).items()
@@ -118,7 +121,7 @@ def _serialize(cfg: Config) -> str:
     out.append("[curve]")
     out.append(_curve(cfg.curve))
     for name, c in cfg.profiles.items():
-        out.append(f"[profiles.{name}]")
+        out.append(f'[profiles."{name}"]')
         out.append(_curve(c))
     for name, c in cfg.user_presets.items():
         # TOML-Quoted-Keys, damit Leerzeichen erlaubt sind

@@ -157,7 +157,9 @@ class TpfanService:
         self._check("org.tpfan1.reload-config", call_info.get("sender", ""))
         self._cmd("reload_config")
 
-    def ResetLevelRpmStats(self) -> None:
+    @accepts_additional_arguments
+    def ResetLevelRpmStats(self, *, call_info) -> None:
+        self._check("org.tpfan1.reset-rpm-stats", call_info.get("sender", ""))
         self._cmd("reset_rpm_stats")
 
     # --- Signale ---

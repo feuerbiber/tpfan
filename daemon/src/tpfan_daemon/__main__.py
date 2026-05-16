@@ -103,8 +103,8 @@ def main() -> int:
                 save_stats(RPM_STATS_PATH, rpm_stats)
         except Exception:
             log.exception("tick failed")
-        finally:
-            _sd_notify("WATCHDOG=1")
+            return True
+        _sd_notify("WATCHDOG=1")
         return True
 
     GLib.timeout_add_seconds(1, tick)
