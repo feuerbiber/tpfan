@@ -145,10 +145,18 @@ install_python_packages() {
     "$VENV_PY" -m pip install --upgrade "$REPO_DIR/gui"
 }
 
+install_launcher() {
+    # ersetzt den Default-venv-Pfad im Launcher durch $VENV_DIR
+    local src=$1 dst=$2
+    install -d -m 0755 "$(dirname "$dst")"
+    sed "s|/opt/tpfan/venv|$VENV_DIR|g" "$src" > "$dst"
+    chmod 0755 "$dst"
+}
+
 install_packaging() {
     log "kopiere Packaging-Dateien"
-    install -D -m 0755 "$PACKAGING/tpfan-daemon-launcher" /usr/local/bin/tpfan-daemon
-    install -D -m 0755 "$PACKAGING/tpfan-gui-launcher"    /usr/local/bin/tpfan-gui
+    install_launcher "$PACKAGING/tpfan-daemon-launcher" /usr/local/bin/tpfan-daemon
+    install_launcher "$PACKAGING/tpfan-gui-launcher"    /usr/local/bin/tpfan-gui
     install -D -m 0644 "$PACKAGING/tpfan-daemon.service"  /etc/systemd/system/tpfan-daemon.service
     install -D -m 0644 "$PACKAGING/org.tpfan1.conf"       /etc/dbus-1/system.d/org.tpfan1.conf
     install -D -m 0644 "$PACKAGING/org.tpfan1.service"    /usr/share/dbus-1/system-services/org.tpfan1.service
