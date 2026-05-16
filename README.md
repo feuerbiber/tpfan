@@ -22,12 +22,13 @@ Qt-basierte GUI mit Tray-Icon, Statusanzeige und Lüfterkurven-Editor.
   neu geladen).
 - Python ≥ 3.11.
 - D-Bus-System-Bus, polkit, PyGObject (`gi`, für die GUI-Integration).
-- Auf Fedora/RHEL kümmert sich der Installer selbst um die Pakete
-  (`python3-pip`, `python3-gobject`, `dbus-daemon`, `polkit`).
+- Der Installer kümmert sich auf Fedora/RHEL (`dnf`), Debian/Ubuntu/Mint
+  (`apt`) und Arch/Manjaro (`pacman`) selbst um die nötigen Pakete
+  (pip, venv, PyGObject, D-Bus, polkit).
 
 ## Installation
 
-Komfort-Skript (Fedora-artige Distros):
+Komfort-Skript (Fedora-, Debian- und Arch-basierte Distros):
 
     sudo ./scripts/install.sh
 

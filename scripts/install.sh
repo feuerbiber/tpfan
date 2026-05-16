@@ -25,6 +25,8 @@ VENV_DIR=${TPFAN_VENV:-/opt/tpfan/venv}
 VENV_PY="$VENV_DIR/bin/python3"
 
 DNF_DEPS=(python3-pip python3-gobject dbus-daemon polkit)
+APT_DEPS=(python3-pip python3-venv python3-gi dbus policykit-1)
+PACMAN_DEPS=(python-pip python-gobject dbus polkit)
 
 log()  { printf '\033[1;34m[tpfan]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[tpfan]\033[0m %s\n' "$*" >&2; }
@@ -54,34 +56,73 @@ require_root() {
     fi
 }
 
-detect_distro() {
+detect_distro_family() {
+    # Liefert: fedora | debian | arch | unknown
+    local id="" id_like=""
     if [[ -r /etc/os-release ]]; then
         . /etc/os-release
-        echo "${ID:-unknown}"
-    else
-        echo "unknown"
+        id="${ID:-}"
+        id_like="${ID_LIKE:-}"
     fi
+    case " $id $id_like " in
+        *" fedora "*|*" rhel "*|*" centos "*) echo fedora ;;
+        *" debian "*|*" ubuntu "*)             echo debian ;;
+        *" arch "*)                            echo arch ;;
+        *)                                     echo unknown ;;
+    esac
+}
+
+install_system_deps_fedora() {
+    local missing=()
+    for pkg in "${DNF_DEPS[@]}"; do
+        rpm -q "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
+    done
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        log "System-Abhängigkeiten bereits installiert: ${DNF_DEPS[*]}"
+        return 0
+    fi
+    log "installiere fehlende System-Abhängigkeiten via dnf: ${missing[*]}"
+    dnf install -y --setopt=install_weak_deps=False "${missing[@]}"
+}
+
+install_system_deps_debian() {
+    local missing=()
+    for pkg in "${APT_DEPS[@]}"; do
+        dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null \
+            | grep -q "install ok installed" || missing+=("$pkg")
+    done
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        log "System-Abhängigkeiten bereits installiert: ${APT_DEPS[*]}"
+        return 0
+    fi
+    log "installiere fehlende System-Abhängigkeiten via apt: ${missing[*]}"
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}"
+}
+
+install_system_deps_arch() {
+    local missing=()
+    for pkg in "${PACMAN_DEPS[@]}"; do
+        pacman -Qi "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
+    done
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        log "System-Abhängigkeiten bereits installiert: ${PACMAN_DEPS[*]}"
+        return 0
+    fi
+    log "installiere fehlende System-Abhängigkeiten via pacman: ${missing[*]}"
+    pacman -Sy --needed --noconfirm "${missing[@]}"
 }
 
 install_system_deps() {
-    local distro
-    distro=$(detect_distro)
-    case "$distro" in
-        fedora|rhel|centos)
-            local missing=()
-            for pkg in "${DNF_DEPS[@]}"; do
-                rpm -q "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
-            done
-            if [[ ${#missing[@]} -eq 0 ]]; then
-                log "System-Abhängigkeiten bereits installiert: ${DNF_DEPS[*]}"
-                return 0
-            fi
-            log "installiere fehlende System-Abhängigkeiten via dnf: ${missing[*]}"
-            dnf install -y --setopt=install_weak_deps=False "${missing[@]}"
-            ;;
+    local family
+    family=$(detect_distro_family)
+    case "$family" in
+        fedora) install_system_deps_fedora ;;
+        debian) install_system_deps_debian ;;
+        arch)   install_system_deps_arch ;;
         *)
-            warn "Distro '$distro' nicht direkt unterstützt — überspringe System-Deps"
-            warn "stelle sicher dass python3-pip, python3-gobject (gi), dbus-daemon und polkit installiert sind"
+            warn "Distro-Familie nicht erkannt — überspringe System-Deps"
+            warn "stelle sicher dass python3 + venv, pip, PyGObject (gi), dbus und polkit installiert sind"
             ;;
     esac
 }
