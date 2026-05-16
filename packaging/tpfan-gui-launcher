@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec /usr/bin/python3 -m tpfan_gui "$@"
+exec /opt/tpfan/venv/bin/python3 -m tpfan_gui "$@"

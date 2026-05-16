@@ -21,7 +21,8 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PACKAGING="$REPO_DIR/packaging"
 
 PY=${TPFAN_PY:-/usr/bin/python3}
-PIP_FLAGS=${TPFAN_PIP_FLAGS:---break-system-packages}
+VENV_DIR=${TPFAN_VENV:-/opt/tpfan/venv}
+VENV_PY="$VENV_DIR/bin/python3"
 
 DNF_DEPS=(python3-pip python3-gobject dbus-daemon polkit)
 
@@ -85,10 +86,22 @@ install_system_deps() {
     esac
 }
 
+create_venv() {
+    if [[ ! -x "$VENV_PY" ]]; then
+        log "erstelle venv unter $VENV_DIR (mit --system-site-packages für gi/PyGObject)"
+        install -d -m 0755 "$(dirname "$VENV_DIR")"
+        "$PY" -m venv --system-site-packages "$VENV_DIR"
+    else
+        log "venv existiert bereits unter $VENV_DIR — verwende es"
+    fi
+    "$VENV_PY" -m pip install --quiet --upgrade pip
+}
+
 install_python_packages() {
-    log "installiere tpfan-daemon und tpfan-gui systemweit via pip"
-    "$PY" -m pip install $PIP_FLAGS "$REPO_DIR/daemon"
-    "$PY" -m pip install $PIP_FLAGS "$REPO_DIR/gui"
+    create_venv
+    log "installiere tpfan-daemon und tpfan-gui ins venv"
+    "$VENV_PY" -m pip install --upgrade "$REPO_DIR/daemon"
+    "$VENV_PY" -m pip install --upgrade "$REPO_DIR/gui"
 }
 
 install_packaging() {
@@ -174,8 +187,14 @@ smoke_check() {
 }
 
 uninstall_python_packages() {
-    log "deinstalliere tpfan-daemon und tpfan-gui Python-Pakete"
-    "$PY" -m pip uninstall -y $PIP_FLAGS tpfan-gui tpfan-daemon || true
+    if [[ -d "$VENV_DIR" ]]; then
+        log "entferne venv $VENV_DIR"
+        rm -rf "$VENV_DIR"
+        # leere Eltern-Verzeichnisse aufräumen (z. B. /opt/tpfan)
+        rmdir -p --ignore-fail-on-non-empty "$(dirname "$VENV_DIR")" 2>/dev/null || true
+    else
+        log "kein venv unter $VENV_DIR gefunden — überspringe"
+    fi
 }
 
 uninstall_packaging() {
@@ -259,8 +278,8 @@ Usage:
   sudo $0 --help       # diese Hilfe
 
 Umgebungsvariablen:
-  TPFAN_PY=/path/to/python3   # alternativer Python-Interpreter (default: /usr/bin/python3)
-  TPFAN_PIP_FLAGS="..."       # pip-Flags (default: --break-system-packages)
+  TPFAN_PY=/path/to/python3   # Python-Interpreter zum Erzeugen des venv (default: /usr/bin/python3)
+  TPFAN_VENV=/path/to/venv    # Zielverzeichnis des venv (default: /opt/tpfan/venv)
 EOF
         ;;
     *)
