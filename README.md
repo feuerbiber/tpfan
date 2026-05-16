@@ -34,7 +34,8 @@ Komfort-Skript (Fedora-, Debian- und Arch-basierte Distros):
 
 Das Skript:
 
-1. installiert fehlende System-Abhängigkeiten via `dnf`,
+1. installiert fehlende System-Abhängigkeiten via `dnf`, `apt` oder
+   `pacman` (je nach erkannter Distro-Familie),
 2. legt unter `/opt/tpfan/venv` ein dediziertes venv an
    (`--system-site-packages`, damit das system-eigene `python3-gobject`
    nutzbar bleibt) und installiert `tpfan-daemon` + `tpfan-gui` dort hinein,
