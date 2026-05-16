@@ -8,17 +8,20 @@ log = logging.getLogger(__name__)
 # Mapping: (hwmon-name, label-substring or None) -> semantischer Name.
 # Reihenfolge bestimmt Prioritaet bei doppelten Hits.
 _MAP: list[tuple[str, str | None, str]] = [
-    ("k10temp",     "Tctl",      "CPU"),
-    ("amdgpu",      "edge",      "GPU"),
-    ("nvme",        "Composite", "NVMe"),
-    ("nvme",        "Sensor 1",  "NVMe-S1"),
-    ("nvme",        "Sensor 2",  "NVMe-S2"),
-    ("thinkpad",    "CPU",       "MB-CPU"),
-    ("thinkpad",    "GPU",       "MB-GPU"),
-    ("thinkpad",    None,        "MB"),
-    ("spd5118",     None,        "RAM"),
-    ("mt7921_phy0", None,        "WLAN"),
-    ("acpitz",      None,        "ACPI"),
+    ("k10temp",     "Tctl",       "CPU"),
+    ("coretemp",    "Package id", "CPU"),
+    ("amdgpu",      "edge",       "GPU"),
+    ("nouveau",     None,         "GPU"),
+    ("nvidia",      None,         "GPU"),
+    ("nvme",        "Composite",  "NVMe"),
+    ("nvme",        "Sensor 1",   "NVMe-S1"),
+    ("nvme",        "Sensor 2",   "NVMe-S2"),
+    ("thinkpad",    "CPU",        "MB-CPU"),
+    ("thinkpad",    "GPU",        "MB-GPU"),
+    ("thinkpad",    None,         "MB"),
+    ("spd5118",     None,         "RAM"),
+    ("mt7921_phy0", None,         "WLAN"),
+    ("acpitz",      None,         "ACPI"),
 ]
 
 
@@ -36,6 +39,7 @@ class Sensors:
 
     def discover(self) -> None:
         self.refs = []
+        taken: set[str] = set()
         for d in sorted(self.root.iterdir()):
             if not d.is_dir():
                 continue
@@ -52,9 +56,29 @@ class Sensors:
                 label = label_path.read_text().strip() if label_path.exists() else None
                 sem = self._classify(drv, label, idx)
                 if sem is None:
-                    continue
+                    sem = self._generic_name(drv, label, idx)
+                sem = self._dedupe(sem, taken)
+                taken.add(sem)
                 src = f"{drv}/{label or f'temp{idx}'}"
                 self.refs.append(SensorRef(sem, input_path, src))
+
+    @staticmethod
+    def _generic_name(drv: str, label: str | None, idx: str) -> str:
+        # Generischer Fallback für Hardware, die nicht in _MAP steht.
+        # Erlaubt Nutzern auf anderen ThinkPads, alle Sensoren in der GUI
+        # zu sehen und in der Curve zu verwenden.
+        if label:
+            return f"{drv}-{label}"
+        return f"{drv}-temp{idx}"
+
+    @staticmethod
+    def _dedupe(name: str, taken: set[str]) -> str:
+        if name not in taken:
+            return name
+        i = 2
+        while f"{name}#{i}" in taken:
+            i += 1
+        return f"{name}#{i}"
 
     def _classify(self, drv: str, label: str | None, idx: str) -> str | None:
         for d, lbl, sem in _MAP:
