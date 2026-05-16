@@ -1,5 +1,7 @@
 # tpfan
 
+*English version: [README.en.md](README.en.md).*
+
 Lüfter-Steuerung und Temperatur-Anzeige für ThinkPad-Notebooks (entwickelt
 und getestet auf einem ThinkPad E14 Gen 7) unter Linux. Steuert den Lüfter
 über das `thinkpad_acpi`-Kernelmodul (`fan_control=1`) und bietet eine

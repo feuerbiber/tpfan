@@ -32,6 +32,6 @@ tar \
     -czf "$OUT" \
     daemon/pyproject.toml daemon/src \
     gui/pyproject.toml gui/src \
-    packaging scripts README.md LICENSE
+    packaging scripts README.md README.en.md LICENSE
 
 echo "pack-dist: $OUT ($(stat -c %s "$OUT") Bytes)"
