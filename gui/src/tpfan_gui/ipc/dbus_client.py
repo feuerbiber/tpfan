@@ -60,6 +60,8 @@ class _ProxyOps:
     def set_failsafe_temp(self, t: float): self._require_proxy().SetFailsafeTemp(t)
     def reload_config(self): self._require_proxy().ReloadConfig()
     def reset_rpm_stats(self): self._require_proxy().ResetLevelRpmStats()
+    def set_rpm_stats_enabled(self, enabled: bool):
+        self._require_proxy().SetRpmStatsEnabled(bool(enabled))
 
 
 def translate_tick(temps: dict[str, float],

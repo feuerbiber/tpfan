@@ -45,6 +45,7 @@ class Config:
     curve: CurveCfg = field(default_factory=CurveCfg.from_default)
     profiles: dict[str, CurveCfg] = field(default_factory=dict)
     user_presets: dict[str, CurveCfg] = field(default_factory=dict)
+    rpm_stats_enabled: bool = True
 
 
 DEFAULT = Config(
@@ -92,6 +93,7 @@ def load(path: Path) -> Config:
     if manual_level not in VALID_LEVELS:
         raise ValueError(f"invalid manual_level: {manual_level}")
     failsafe_temp = float(raw.get("failsafe_temp", DEFAULT.failsafe_temp))
+    rpm_stats_enabled = bool(raw.get("rpm_stats_enabled", DEFAULT.rpm_stats_enabled))
     curve = _validate_curve(raw["curve"]) if "curve" in raw else DEFAULT.curve
     profiles = {
         validate_preset_name(k): _validate_curve(v)
@@ -103,7 +105,8 @@ def load(path: Path) -> Config:
     }
     return Config(mode=mode, manual_level=manual_level,
                   failsafe_temp=failsafe_temp, curve=curve,
-                  profiles=profiles, user_presets=user_presets)
+                  profiles=profiles, user_presets=user_presets,
+                  rpm_stats_enabled=rpm_stats_enabled)
 
 
 def _serialize(cfg: Config) -> str:
@@ -117,6 +120,7 @@ def _serialize(cfg: Config) -> str:
     out.append(f'mode = "{cfg.mode}"')
     out.append(f'manual_level = "{cfg.manual_level}"')
     out.append(f"failsafe_temp = {cfg.failsafe_temp}")
+    out.append(f"rpm_stats_enabled = {'true' if cfg.rpm_stats_enabled else 'false'}")
     out.append("")
     out.append("[curve]")
     out.append(_curve(cfg.curve))

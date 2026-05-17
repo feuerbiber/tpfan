@@ -97,10 +97,11 @@ def main() -> int:
             service.Tick(tr.temps, fans_payload, tr.target_level)
             if tr.emergency:
                 service.EmergencyTriggered(tr.emergency[0], tr.emergency[1])
-            rpm_stats.record(tr.target_level, int(fan_state.speed_rpm))
-            tick_counter[0] += 1
-            if tick_counter[0] % RPM_STATS_SAVE_EVERY == 0:
-                save_stats(RPM_STATS_PATH, rpm_stats)
+            if daemon.loop.config.rpm_stats_enabled:
+                rpm_stats.record(tr.target_level, int(fan_state.speed_rpm))
+                tick_counter[0] += 1
+                if tick_counter[0] % RPM_STATS_SAVE_EVERY == 0:
+                    save_stats(RPM_STATS_PATH, rpm_stats)
         except Exception:
             log.exception("tick failed")
             return True
@@ -123,6 +124,7 @@ def _state_dict(d: Daemon, sensors: Sensors, rpm_stats: RpmStatsTracker) -> dict
         "curve_sensors": list(d.loop.config.curve.sensors),
         "failsafe_temp": d.loop.config.failsafe_temp,
         "rpm_stats": rpm_stats.as_dict(),
+        "rpm_stats_enabled": d.loop.config.rpm_stats_enabled,
         "user_presets": d.loop.config.user_presets,
         "boot_grace_remaining": d.loop.boot_grace_remaining(),
     }

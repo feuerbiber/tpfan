@@ -58,6 +58,10 @@ class Daemon:
                 raise ValueError("failsafe out of range")
             self.loop.set_config(replace(self.loop.config, failsafe_temp=t))
             self._save()
+        elif cmd == "set_rpm_stats_enabled":
+            enabled = bool(args[0])
+            self.loop.set_config(replace(self.loop.config, rpm_stats_enabled=enabled))
+            self._save()
         elif cmd == "reload_config":
             self.loop.set_config(load(self.config_path))
         elif cmd == "save_user_preset":

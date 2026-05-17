@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 from dasbus.server.interface import dbus_interface, dbus_signal, accepts_additional_arguments
-from dasbus.typing import Str, Double, UInt32, List, Tuple, Dict, Byte
+from dasbus.typing import Str, Double, UInt32, List, Tuple, Dict, Byte, Bool
 from .. import __version__
 
 BUS_NAME = "org.tpfan1"
@@ -108,6 +108,10 @@ class TpfanService:
         return __version__
 
     @property
+    def RpmStatsEnabled(self) -> Bool:
+        return bool(self._state().get("rpm_stats_enabled", True))
+
+    @property
     def LevelRpmStats(self) -> Dict[Str, Tuple[UInt32, UInt32, UInt32, UInt32]]:
         stats = self._state().get("rpm_stats") or {}
         out: dict[str, tuple[int, int, int, int]] = {}
@@ -156,6 +160,11 @@ class TpfanService:
     def ReloadConfig(self, *, call_info) -> None:
         self._check("org.tpfan1.reload-config", call_info.get("sender", ""))
         self._cmd("reload_config")
+
+    @accepts_additional_arguments
+    def SetRpmStatsEnabled(self, enabled: Bool, *, call_info) -> None:
+        self._check("org.tpfan1.set-rpm-stats-enabled", call_info.get("sender", ""))
+        self._cmd("set_rpm_stats_enabled", bool(enabled))
 
     @accepts_additional_arguments
     def ResetLevelRpmStats(self, *, call_info) -> None:

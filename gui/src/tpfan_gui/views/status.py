@@ -4,7 +4,8 @@ from typing import Any
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QGroupBox,
                               QLabel, QTableWidget, QTableWidgetItem,
-                              QPushButton, QHBoxLayout, QHeaderView)
+                              QPushButton, QHBoxLayout, QHeaderView,
+                              QCheckBox)
 
 from .curve_editor import format_mode_label
 from .. import __version__ as GUI_VERSION
@@ -92,6 +93,10 @@ class StatusView(QWidget):
                       "definiert und kann variieren.")
         hint.setWordWrap(True)
         rl.addWidget(hint)
+        self.rpm_enabled_chk = QCheckBox("Drehzahlen pro Level beobachten")
+        self.rpm_enabled_chk.setChecked(True)
+        self.rpm_enabled_chk.toggled.connect(self._on_rpm_enabled_toggled)
+        rl.addWidget(self.rpm_enabled_chk)
         self.rpm_table = QTableWidget(0, 4)
         self.rpm_table.setHorizontalHeaderLabels(["Level", "RPM (zuletzt)", "min / max", "n"])
         self.rpm_table.verticalHeader().setVisible(False)
@@ -131,6 +136,16 @@ class StatusView(QWidget):
         row_h = t.rowHeight(0)
         rows = min(t.rowCount(), self.rpm_visible_rows)
         t.setFixedHeight(h + rows * row_h)
+
+    def _on_rpm_enabled_toggled(self, checked: bool) -> None:
+        # Daemon-Call nur, wenn das vom Benutzer kommt — beim Sync aus
+        # refresh() blockieren wir Signale, damit kein Echo entsteht.
+        try:
+            self._client.set_rpm_stats_enabled(bool(checked))
+        except Exception:
+            pass
+        self.rpm_table.setEnabled(checked)
+        self.reset_rpm_btn.setEnabled(checked)
 
     def _reset_rpm_stats(self) -> None:
         try:
@@ -175,6 +190,15 @@ class StatusView(QWidget):
             self.curve_table.setItem(i, 1, it_l)
         self._autosize_table(self.curve_table)
 
+        enabled = self._get("RpmStatsEnabled")
+        if enabled is not None:
+            want = bool(enabled)
+            if self.rpm_enabled_chk.isChecked() != want:
+                self.rpm_enabled_chk.blockSignals(True)
+                self.rpm_enabled_chk.setChecked(want)
+                self.rpm_enabled_chk.blockSignals(False)
+            self.rpm_table.setEnabled(want)
+            self.reset_rpm_btn.setEnabled(want)
         self._refresh_rpm_table()
 
     def _refresh_rpm_table(self) -> None:
