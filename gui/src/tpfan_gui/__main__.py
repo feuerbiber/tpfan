@@ -33,6 +33,7 @@ def _parse_args(argv):
 def main() -> int:
     args, qt_argv = _parse_args(sys.argv)
     app = QApplication([sys.argv[0], *qt_argv])
+    app.setOrganizationName("tpfan")
     app.setApplicationName("tpfan")
     app.setDesktopFileName("tpfan-gui")
     app.setWindowIcon(QIcon.fromTheme("tpfan"))
