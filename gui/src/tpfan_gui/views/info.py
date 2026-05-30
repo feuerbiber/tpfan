@@ -9,6 +9,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from .. import __version__ as GUI_VERSION
+
 
 class InfoView(QWidget):
     """Displays project authorship, license and contact information."""
@@ -20,6 +22,7 @@ class InfoView(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         for text in (
+            f"Version: {GUI_VERSION}",
             "made by Matthias Gruß with Claude Code by Anthropic",
             "Lizenz: GPLv3 oder neuer",
             "Kontakt: matthiasgruss@posteo.de",
