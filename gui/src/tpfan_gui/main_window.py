@@ -5,6 +5,7 @@ from .ipc.dbus_client import TickPayload
 from .views.dashboard import Dashboard
 from .views.history import make_widget as make_history
 from .views.curve_editor import CurveModel, make_widget as make_curve_editor
+from .views.info import InfoView
 from .views.modes import ModesPanel
 from .views.status import StatusView
 
@@ -25,6 +26,7 @@ class MainWindow(QMainWindow):
         )
         self.modes = ModesPanel(profiles=["quiet", "balanced", "performance"])
         self.status = StatusView(client)
+        self.info = InfoView()
 
         tabs = QTabWidget()
         tabs.addTab(self.dashboard, "Übersicht")
@@ -32,6 +34,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(self.curve_editor, "Kurve")
         tabs.addTab(self.modes, "Modus")
         tabs.addTab(self.status, "Status")
+        tabs.addTab(self.info, "Info")
         self.tabs = tabs
         tabs.currentChanged.connect(self._on_tab_changed)
         self.setCentralWidget(tabs)
